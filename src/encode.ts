@@ -1,0 +1,114 @@
+import { WopError } from './error';
+
+/**
+ * 线上二进制编码工具：base64url 无填充（严格模式，F6/F7）、小写 hex、utf-8。
+ * 零依赖，浏览器与 Node ≥18 通用。
+ */
+
+const B64URL_RE = /^[A-Za-z0-9_-]*$/;
+const STD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const B64U_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/** base64url 无填充编码 */
+export function toBase64Url(bytes: Uint8Array): string {
+  return encodeWith(bytes, B64U_ALPHABET);
+}
+
+/**
+ * base64url 无填充**严格**解码：带 `=`、非法字符、不可能长度（%4==1）一律拒绝。
+ */
+export function fromBase64Url(s: string): Uint8Array {
+  if (!B64URL_RE.test(s)) {
+    throw new WopError(`base64url 解码失败：输入含非法字符或填充符 "="`, 'parse');
+  }
+  if (s.length % 4 === 1) {
+    throw new WopError(`base64url 解码失败：长度非法（${s.length} % 4 == 1）`, 'parse');
+  }
+  return decodeWith(s, B64U_ALPHABET);
+}
+
+/** 标准 base64 编码（密钥材料，含 padding） */
+export function toBase64(bytes: Uint8Array): string {
+  return encodeWith(bytes, STD_ALPHABET);
+}
+
+/** 标准 base64 解码（容忍 padding） */
+export function fromBase64(s: string): Uint8Array {
+  const trimmed = s.replace(/=+$/, '');
+  if (!/^[A-Za-z0-9+/]*$/.test(trimmed)) {
+    throw new WopError('base64 解码失败：输入含非法字符', 'parse');
+  }
+  if (trimmed.length % 4 === 1) {
+    throw new WopError(`base64 解码失败：长度非法（${trimmed.length} % 4 == 1）`, 'parse');
+  }
+  return decodeWith(trimmed, STD_ALPHABET);
+}
+
+/** 小写 hex 编码 */
+export function toHex(bytes: Uint8Array): string {
+  let out = '';
+  for (const b of bytes) out += b.toString(16).padStart(2, '0');
+  return out;
+}
+
+/** hex 解码（小写/大写均收，输出原始字节） */
+export function fromHex(s: string): Uint8Array {
+  if (!/^[0-9a-fA-F]+$/.test(s) || s.length % 2 !== 0) {
+    throw new WopError('hex 解码失败：非十六进制字符或奇数长度', 'parse');
+  }
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+export function utf8Encode(s: string): Uint8Array {
+  return encoder.encode(s);
+}
+
+export function utf8Decode(bytes: Uint8Array): string {
+  return decoder.decode(bytes);
+}
+
+/** 通用 base64 家族编码（无填充输出） */
+function encodeWith(bytes: Uint8Array, alphabet: string): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i]!;
+    const b1 = bytes[i + 1];
+    const b2 = bytes[i + 2];
+    out += alphabet[b0 >> 2]!;
+    out += alphabet[((b0 & 0x03) << 4) | ((b1 ?? 0) >> 4)]!;
+    if (b1 === undefined) break;
+    out += alphabet[((b1 & 0x0f) << 2) | ((b2 ?? 0) >> 6)]!;
+    if (b2 === undefined) break;
+    out += alphabet[b2 & 0x3f]!;
+  }
+  return out;
+}
+
+/** 通用 base64 家族解码（无 padding 输入） */
+function decodeWith(s: string, alphabet: string): Uint8Array {
+  const len = s.length;
+  const out = new Uint8Array(Math.floor((len * 3) / 4));
+  let acc = 0;
+  let bits = 0;
+  let pos = 0;
+  for (let i = 0; i < len; i++) {
+    const v = alphabet.indexOf(s[i]!);
+    if (v < 0) {
+      throw new WopError(`base64 解码失败：位置 ${i} 处含非法字符 "${s[i]}"`, 'parse');
+    }
+    acc = (acc << 6) | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[pos++] = (acc >> bits) & 0xff;
+    }
+  }
+  return out;
+}
