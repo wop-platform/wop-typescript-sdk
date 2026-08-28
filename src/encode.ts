@@ -5,6 +5,9 @@ import { WopError } from './error';
  * 零依赖，浏览器与 Node ≥18 通用。
  */
 
+/** 明确以 ArrayBuffer 为底的字节类型（WebCrypto BufferSource 兼容） */
+export type Bytes = Uint8Array<ArrayBuffer>;
+
 const B64URL_RE = /^[A-Za-z0-9_-]*$/;
 const STD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 const B64U_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -17,9 +20,9 @@ export function toBase64Url(bytes: Uint8Array): string {
 /**
  * base64url 无填充**严格**解码：带 `=`、非法字符、不可能长度（%4==1）一律拒绝。
  */
-export function fromBase64Url(s: string): Uint8Array {
+export function fromBase64Url(s: string): Bytes {
   if (!B64URL_RE.test(s)) {
-    throw new WopError(`base64url 解码失败：输入含非法字符或填充符 "="`, 'parse');
+    throw new WopError('base64url 解码失败：输入含非法字符或填充符 "="', 'parse');
   }
   if (s.length % 4 === 1) {
     throw new WopError(`base64url 解码失败：长度非法（${s.length} % 4 == 1）`, 'parse');
@@ -33,7 +36,7 @@ export function toBase64(bytes: Uint8Array): string {
 }
 
 /** 标准 base64 解码（容忍 padding） */
-export function fromBase64(s: string): Uint8Array {
+export function fromBase64(s: string): Bytes {
   const trimmed = s.replace(/=+$/, '');
   if (!/^[A-Za-z0-9+/]*$/.test(trimmed)) {
     throw new WopError('base64 解码失败：输入含非法字符', 'parse');
@@ -52,11 +55,11 @@ export function toHex(bytes: Uint8Array): string {
 }
 
 /** hex 解码（小写/大写均收，输出原始字节） */
-export function fromHex(s: string): Uint8Array {
+export function fromHex(s: string): Bytes {
   if (!/^[0-9a-fA-F]+$/.test(s) || s.length % 2 !== 0) {
     throw new WopError('hex 解码失败：非十六进制字符或奇数长度', 'parse');
   }
-  const out = new Uint8Array(s.length / 2);
+  const out = new Uint8Array(s.length / 2) as Bytes;
   for (let i = 0; i < out.length; i++) {
     out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
   }
@@ -66,15 +69,15 @@ export function fromHex(s: string): Uint8Array {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export function utf8Encode(s: string): Uint8Array {
-  return encoder.encode(s);
+export function utf8Encode(s: string): Bytes {
+  return encoder.encode(s) as Bytes;
 }
 
 export function utf8Decode(bytes: Uint8Array): string {
   return decoder.decode(bytes);
 }
 
-/** 通用 base64 家族编码（无填充输出） */
+/** 通用 base64 家族编码（无 padding 输出） */
 function encodeWith(bytes: Uint8Array, alphabet: string): string {
   let out = '';
   for (let i = 0; i < bytes.length; i += 3) {
@@ -92,9 +95,9 @@ function encodeWith(bytes: Uint8Array, alphabet: string): string {
 }
 
 /** 通用 base64 家族解码（无 padding 输入） */
-function decodeWith(s: string, alphabet: string): Uint8Array {
+function decodeWith(s: string, alphabet: string): Bytes {
   const len = s.length;
-  const out = new Uint8Array(Math.floor((len * 3) / 4));
+  const out = new Uint8Array(Math.floor((len * 3) / 4)) as Bytes;
   let acc = 0;
   let bits = 0;
   let pos = 0;
