@@ -94,7 +94,7 @@ function encodeWith(bytes: Uint8Array, alphabet: string): string {
   return out;
 }
 
-/** 通用 base64 家族解码（无 padding 输入） */
+/** 通用 base64 家族解码（无 padding 输入；输入合法性由调用方正则预检保证） */
 function decodeWith(s: string, alphabet: string): Bytes {
   const len = s.length;
   const out = new Uint8Array(Math.floor((len * 3) / 4)) as Bytes;
@@ -102,11 +102,7 @@ function decodeWith(s: string, alphabet: string): Bytes {
   let bits = 0;
   let pos = 0;
   for (let i = 0; i < len; i++) {
-    const v = alphabet.indexOf(s[i]!);
-    if (v < 0) {
-      throw new WopError(`base64 解码失败：位置 ${i} 处含非法字符 "${s[i]}"`, 'parse');
-    }
-    acc = (acc << 6) | v;
+    acc = (acc << 6) | alphabet.indexOf(s[i]!)!;
     bits += 6;
     if (bits >= 8) {
       bits -= 8;

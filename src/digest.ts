@@ -1,5 +1,6 @@
 import { WopError } from './error';
 import { toHex } from './encode';
+import { subtle } from './crypto';
 import type { AlgorithmSuite } from './suite';
 
 /**
@@ -52,18 +53,10 @@ export function verifyDigestHeader(
   }
   if (alg !== suite.digestLabel) {
     throw new WopError(
-      `digest header "${value}" 与套件 ${suite.securityReq} 跨族：${alg} 仅属 ${alg === 'sha-256' ? 'RSA' : 'SM2'} 族（I5）`,
+      `digest header "${value}" 与套件 ${suite.securityReq} 跨族：期望 ${suite.digestLabel}（I5）`,
       'unsupported',
     );
   }
   return { alg, hex };
 }
 
-/** WebCrypto 入口：Node ≥18 与浏览器均为 globalThis.crypto.subtle */
-function subtle(): SubtleCrypto {
-  const c = globalThis.crypto;
-  if (!c?.subtle) {
-    throw new WopError('当前运行时缺少 WebCrypto（globalThis.crypto.subtle），需要 Node ≥18 或安全上下文浏览器', 'system');
-  }
-  return c.subtle;
-}
