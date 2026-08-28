@@ -1,6 +1,6 @@
 import { WopError } from './error';
 import { toHex } from './encode';
-import { subtle } from './crypto';
+import { webcrypto } from './crypto';
 import type { AlgorithmSuite } from './suite';
 
 /**
@@ -15,7 +15,8 @@ import type { AlgorithmSuite } from './suite';
 /** 计算 wire body 的 SHA-256 摘要并组装 header 值：`sha-256 <64 位小写 hex>` */
 export async function computeDigestHeader(body: Uint8Array | string): Promise<string> {
   const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : body;
-  const digest = new Uint8Array(await subtle().digest('SHA-256', bytes as unknown as BufferSource));
+  const { subtle } = await webcrypto();
+  const digest = new Uint8Array(await subtle.digest('SHA-256', bytes as unknown as BufferSource));
   return `sha-256 ${toHex(digest)}`;
 }
 

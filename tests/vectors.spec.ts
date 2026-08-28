@@ -186,9 +186,9 @@ describe('DEK 载荷（§6.1：alg$key$iv）', () => {
 });
 
 describe('CSPRNG', () => {
-  it('randomBytes：长度正确且两次不同（F9）', () => {
-    const a = randomBytes(32);
-    const b = randomBytes(32);
+  it('randomBytes：长度正确且两次不同（F9）', async () => {
+    const a = await randomBytes(32);
+    const b = await randomBytes(32);
     expect(a.length).toBe(32);
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(false);
   });

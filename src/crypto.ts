@@ -10,38 +10,60 @@ import type { Bytes } from './encode';
  *   无 label 参数 = 空 label —— 显式双 SHA-256 天然满足（§3.3③/D10/F2）
  * - 报文加密：AES-256-GCM，key 32B / IV 12B / tag 128bit，密文 = ct‖tag 尾拼（§3.3②/F4）
  *
- * 全部走 globalThis.crypto（Node ≥18 / 浏览器），零第三方依赖；纯函数天然进程级单例（D7）。
+ * 零第三方依赖：优先 globalThis.crypto（Node ≥19 / 浏览器安全上下文）；
+ * Node 18 全局 WebCrypto 未默认暴露（v19 起才默认），回退 node:crypto.webcrypto。
+ * 纯函数天然进程级单例（D7）。
  */
 
-/** WebCrypto 入口；缺失即系统类错误 */
-export function subtle(): SubtleCrypto {
-  const c = globalThis.crypto;
-  if (!c?.subtle) {
-    throw new WopError(
-      '当前运行时缺少 WebCrypto（globalThis.crypto.subtle），需要 Node ≥18 或安全上下文浏览器',
-      'system',
-    );
+let nodeCrypto: Crypto | null = null;
+let loader: Promise<void> | null = null;
+
+/**
+ * WebCrypto 入口（异步）。
+ * node:crypto 仅存在于 Node 运行时——静态引入会破坏浏览器构建，
+ * 属平台差异模块，按规则以运行时动态加载并缓存（非运行时选择的模块不定）。
+ */
+export async function webcrypto(): Promise<Crypto> {
+  const g = globalThis.crypto;
+  if (g?.subtle) return g;
+  loader ??= import('node:crypto').then(
+    (m) => {
+      nodeCrypto = m.webcrypto as Crypto;
+    },
+    () => {
+      loader = null; // 失败不缓存，允许后续重试
+      throw new WopError(
+        '当前运行时缺少 WebCrypto（globalThis.crypto.subtle 与 node:crypto.webcrypto 均不可用），需要 Node ≥18 或安全上下文浏览器',
+        'system',
+      );
+    },
+  );
+  await loader;
+  if (!nodeCrypto?.subtle) {
+    throw new WopError('当前运行时缺少 WebCrypto（globalThis.crypto.subtle 与 node:crypto.webcrypto 均不可用）', 'system');
   }
-  return c.subtle;
+  return nodeCrypto;
 }
 
 /** CSPRNG 字节（I4：IV/nonce 唯一生成点） */
-export function randomBytes(n: number): Bytes {
+export async function randomBytes(n: number): Promise<Bytes> {
+  const c = await webcrypto();
   const out = new Uint8Array(n) as Bytes;
-  globalThis.crypto.getRandomValues(out);
+  c.getRandomValues(out);
   return out;
 }
 
 /** SHA256withRSA 加签（私钥 = PKCS#8 DER） */
 export async function rsaSign(privPkcs8: Uint8Array, data: Uint8Array): Promise<Bytes> {
-  const key = await subtle().importKey(
+  const { subtle } = await webcrypto();
+  const key = await subtle.importKey(
     'pkcs8',
     privPkcs8 as unknown as BufferSource,
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
     false,
     ['sign'],
   );
-  return new Uint8Array(await subtle().sign('RSASSA-PKCS1-v1_5', key, data as unknown as BufferSource)) as Bytes;
+  return new Uint8Array(await subtle.sign('RSASSA-PKCS1-v1_5', key, data as unknown as BufferSource)) as Bytes;
 }
 
 /** SHA256withRSA 验签（公钥 = SPKI DER） */
@@ -50,14 +72,15 @@ export async function rsaVerify(
   signature: Uint8Array,
   data: Uint8Array,
 ): Promise<boolean> {
-  const key = await subtle().importKey(
+  const { subtle } = await webcrypto();
+  const key = await subtle.importKey(
     'spki',
     pubSpki as unknown as BufferSource,
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
     false,
     ['verify'],
   );
-  return subtle().verify(
+  return subtle.verify(
     'RSASSA-PKCS1-v1_5',
     key,
     signature as unknown as BufferSource,
@@ -67,14 +90,15 @@ export async function rsaVerify(
 
 /** RSA-OAEP（双 SHA-256 + 空 label）DEK 包装（公钥 = SPKI DER） */
 export async function oaepWrap(pubSpki: Uint8Array, plaintext: Uint8Array): Promise<Bytes> {
-  const key = await subtle().importKey(
+  const { subtle } = await webcrypto();
+  const key = await subtle.importKey(
     'spki',
     pubSpki as unknown as BufferSource,
     { name: 'RSA-OAEP', hash: 'SHA-256' },
     false,
     ['encrypt'],
   );
-  return new Uint8Array(await subtle().encrypt({ name: 'RSA-OAEP' }, key, plaintext as unknown as BufferSource)) as Bytes;
+  return new Uint8Array(await subtle.encrypt({ name: 'RSA-OAEP' }, key, plaintext as unknown as BufferSource)) as Bytes;
 }
 
 /**
@@ -82,7 +106,8 @@ export async function oaepWrap(pubSpki: Uint8Array, plaintext: Uint8Array): Prom
  * 失败（含 MGF1-SHA-1 陷阱密文）统一抛 I7 模糊错误，不区分 padding/tag 细节。
  */
 export async function oaepUnwrap(privPkcs8: Uint8Array, cipher: Uint8Array): Promise<Bytes> {
-  const key = await subtle().importKey(
+  const { subtle } = await webcrypto();
+  const key = await subtle.importKey(
     'pkcs8',
     privPkcs8 as unknown as BufferSource,
     { name: 'RSA-OAEP', hash: 'SHA-256' },
@@ -90,7 +115,7 @@ export async function oaepUnwrap(privPkcs8: Uint8Array, cipher: Uint8Array): Pro
     ['decrypt'],
   );
   try {
-    return new Uint8Array(await subtle().decrypt({ name: 'RSA-OAEP' }, key, cipher as unknown as BufferSource)) as Bytes;
+    return new Uint8Array(await subtle.decrypt({ name: 'RSA-OAEP' }, key, cipher as unknown as BufferSource)) as Bytes;
   } catch {
     throw new WopError(DECRYPT_FAILED, 'decrypt');
   }
@@ -103,9 +128,10 @@ export async function aesGcmEncrypt(
   plaintext: Uint8Array,
 ): Promise<Bytes> {
   assertAesGcmParams(key, iv);
-  const cryptoKey = await subtle().importKey('raw', key as unknown as BufferSource, 'AES-GCM', false, ['encrypt']);
+  const { subtle } = await webcrypto();
+  const cryptoKey = await subtle.importKey('raw', key as unknown as BufferSource, 'AES-GCM', false, ['encrypt']);
   return new Uint8Array(
-    await subtle().encrypt(
+    await subtle.encrypt(
       { name: 'AES-GCM', iv: iv as unknown as BufferSource, tagLength: 128 },
       cryptoKey,
       plaintext as unknown as BufferSource,
@@ -123,10 +149,11 @@ export async function aesGcmDecrypt(
   if (cipherTag.length < 16) {
     throw new WopError(DECRYPT_FAILED, 'decrypt');
   }
-  const cryptoKey = await subtle().importKey('raw', key as unknown as BufferSource, 'AES-GCM', false, ['decrypt']);
+  const { subtle } = await webcrypto();
+  const cryptoKey = await subtle.importKey('raw', key as unknown as BufferSource, 'AES-GCM', false, ['decrypt']);
   try {
     return new Uint8Array(
-      await subtle().decrypt(
+      await subtle.decrypt(
         { name: 'AES-GCM', iv: iv as unknown as BufferSource, tagLength: 128 },
         cryptoKey,
         cipherTag as unknown as BufferSource,

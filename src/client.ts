@@ -139,14 +139,15 @@ export class WopClient {
 
     // 1. 线上请求体与 L2 信封（§3.3②③/§6）：摘要对象 = wire 原始字节
     let wireBody = '';
+    const nonce = options.nonce ?? toHex(await randomBytes(16));
     const headers: Record<string, string> = {
       'x-wop-appkey': this.config.appKey,
-      'x-wop-nonce': options.nonce ?? toHex(randomBytes(16)),
+      'x-wop-nonce': nonce,
       'x-wop-timestamp': String(options.timestamp ?? Date.now()),
     };
     if (level === 'L2') {
-      const dek = options.dek ?? randomBytes(32);
-      const iv = options.iv ?? randomBytes(12);
+      const dek = options.dek ?? (await randomBytes(32));
+      const iv = options.iv ?? (await randomBytes(12));
       const cipherTag = await aesGcmEncrypt(dek, iv, utf8Encode(body!));
       wireBody = JSON.stringify({ encrypted: toBase64Url(cipherTag) });
       const wrapped = await oaepWrap(

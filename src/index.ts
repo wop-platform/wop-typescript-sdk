@@ -13,6 +13,7 @@ export { canonicalRequest, canonicalHeaders, javaUrlEncode, trimall } from './ca
 export { computeDigestHeader, verifyDigestHeader } from './digest';
 export { keyMaterialToDer } from './keys';
 export {
+  webcrypto,
   rsaSign,
   rsaVerify,
   oaepWrap,

@@ -5,7 +5,7 @@ import { keyMaterialToDer } from '../src/keys';
 import { computeDigestHeader } from '../src/digest';
 import { canonicalRequest } from '../src/canonical';
 import { WopClient } from '../src/client';
-import { aesGcmDecrypt, aesGcmEncrypt, oaepWrap, rsaSign, subtle } from '../src/crypto';
+import { aesGcmDecrypt, aesGcmEncrypt, oaepWrap, randomBytes, rsaSign, webcrypto } from '../src/crypto';
 import { AxiosTransport } from '../src/transport/axios';
 import { FetchTransport } from '../src/transport/fetch';
 import { WopError } from '../src/error';
@@ -40,22 +40,33 @@ describe('crypto 边界', () => {
     await expect(aesGcmDecrypt(KEY, new Uint8Array(0), new Uint8Array(32))).rejects.toThrowError(/IV 长度/);
   });
 
-  it('subtle()：运行时无 WebCrypto → 系统类错误', () => {
+  it('webcrypto()：Node 18 路径——全局缺失时回退 node:crypto.webcrypto（CI 根因回归锚）', async () => {
     const original = globalThis.crypto;
     Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
     try {
-      expect(() => subtle()).toThrowError(/WebCrypto/);
+      const c = await webcrypto();
+      expect(typeof c.subtle.digest).toBe('function');
+      const n = await randomBytes(16);
+      expect(n.length).toBe(16);
     } finally {
       Object.defineProperty(globalThis, 'crypto', { value: original, configurable: true });
     }
   });
 
-  it('computeDigestHeader：运行时无 WebCrypto → 系统类错误', async () => {
+  it('webcrypto()：全局与 node:crypto 均不可用 → 系统类错误', async () => {
+    // 模块加载边界用例（ts-no-dynamic-import 例外）：需 fresh 模块副本使 loader 缓存失效
     const original = globalThis.crypto;
     Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
+    vi.doMock('node:crypto', () => {
+      throw new Error('no node crypto');
+    });
     try {
-      await expect(computeDigestHeader('x')).rejects.toThrowError(/WebCrypto/);
+      vi.resetModules();
+      const fresh = await import('../src/crypto');
+      await expect(fresh.webcrypto()).rejects.toThrowError(/WebCrypto/);
     } finally {
+      vi.doUnmock('node:crypto');
+      vi.resetModules();
       Object.defineProperty(globalThis, 'crypto', { value: original, configurable: true });
     }
   });
