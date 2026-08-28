@@ -1,0 +1,109 @@
+# wop-typescript-sdk
+
+WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密），
+使商户无需理解 canonicalRequest、套件推导与线上字节格式即可安全对接 WOP 网关。
+
+- **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥18 / 浏览器安全上下文）
+- **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
+- **行 / 分支 / 函数 / 语句覆盖率 100%**，黄金测试向量字节级锚定
+
+## 支持的算法套件
+
+| securityReq | 签名 | 报文加密（L2） | 密钥包装 | 摘要 |
+|---|---|---|---|---|
+| `WOP-RSA3072-SHA256` | SHA256withRSA | AES-256-GCM | RSA-3072-OAEP（双 SHA-256） | SHA-256 |
+| `WOP-RSA4096-SHA256` | SHA256withRSA | AES-256-GCM | RSA-4096-OAEP（双 SHA-256） | SHA-256 |
+| `WOP-SM2-SM3` | ❌ 暂未支持（见下方路线图） | | | |
+
+传入 `WOP-SM2-SM3` 会抛出 `WopError('SM2-SM3 套件暂未支持，见 README 路线图')`。
+
+### 国密路线图
+
+按 WOP SDK 统一规格（Q7 裁决），TypeScript 首版仅实现 RSA 套件；SM2-SM3 国密套件已列入路线图，
+将以纯 TypeScript 实现（SM2 / SM3 / SM4-GCM）在后续版本交付，届时保持 API 兼容，仅扩展套件矩阵。
+
+## 快速开始
+
+```bash
+npm install wop-typescript-sdk
+```
+
+```ts
+import { WopClient } from 'wop-typescript-sdk'; // 或 require('wop-typescript-sdk')
+
+const client = new WopClient({
+  appKey: 'your-app-key',
+  suite: 'WOP-RSA3072-SHA256',        // securityReq
+  merchantPrivateKey: '...',           // 商户私钥（PKCS#8）
+  platformPublicKey: '...',            // 平台公钥（X.509 SPKI）
+  gatewayBaseUrl: 'https://gw.example.com',
+});
+
+// L0 明文请求 + 自动验签解密响应
+const resp = await client.send('POST', '/v1/order/create', JSON.stringify({ amount: 100 }));
+if (resp.ok) {
+  console.log(resp.plaintext);         // 已验签 + 已解密的响应明文
+}
+
+// 回调验签（canonical 的 URI 取回调 URL 的 path）
+const result = await client.verifyCallback(callbackHeaders, callbackBody, callbackUrl);
+```
+
+## 密钥准备（D12 格式）
+
+| 密钥 | 格式 | 说明 |
+|---|---|---|
+| 商户私钥 | **PKCS#8 DER 的 Base64**（PEM 或单行 Base64/Base64url 均可） | 请求加签（SHA256withRSA）+ 响应 DEK 解包（RSA-OAEP） |
+| 平台公钥 | **X.509 SubjectPublicKeyInfo DER 的 Base64**（同上） | 响应/回调验签 + 请求 DEK 包装 |
+
+- RSA 密钥长度必须与套件一致（3072/4096），签名定长 512 / 683 字符（base64url）
+- PEM 包装（`-----BEGIN PRIVATE KEY-----`）会被自动剥离，密钥材料等价
+
+## L0 / L2 示例
+
+```ts
+// L0：仅签名，body 明文上送
+const draft = await client.buildRequest('POST', '/v1/order/create', body);
+// draft.headers → 自行携带发送；draft.wireBody → 原 body
+
+// L2：全文数字信封（AES-256-GCM + RSA-OAEP 包 DEK）
+const draftL2 = await client.buildRequest('POST', '/v1/order/create', body, { level: 'L2' });
+// draftL2.wireBody = {"encrypted":"<base64url(ct||tag)>"}；headers 含 x-wop-encrypt: L2;dek=…
+
+// GET 无 body：x-wop-content-digest 自动缺席（D2）
+const draftGet = await client.buildRequest('GET', '/v1/order/query?status=PAID');
+
+// 使用 axios 传输（peer 可选）
+import { AxiosTransport } from 'wop-typescript-sdk/axios';
+client.setTransport(new AxiosTransport());
+```
+
+## 向量自测（conformance）
+
+本仓 `tests/fixtures/crypto-vectors.json` 为协议黄金向量全量副本（只读，禁止手改）。
+克隆仓库后运行 conformance 套件（RSA 段字节级断言 + SM 段"必须拒"负测试）：
+
+```bash
+git clone https://github.com/wop-platform/wop-typescript-sdk
+cd wop-typescript-sdk
+npm install
+npm test          # 全量测试（含向量 conformance）
+npm run coverage  # 覆盖率报告（行+分支 ≥98% 门禁，当前 100%）
+```
+
+向量覆盖：RSA3072/4096 签名、OAEP 包装/解包（含 MGF1-SHA-1 陷阱负向量）、AES-256-GCM 定 IV、
+SHA-256 摘要与 digest header 格式规则（D2 恰一空格 / 小写 hex / 跨族拒绝 / base64url 严格无填充）。
+
+## 错误处理与模糊化（I7）
+
+| 类别 | 对外语义 | 示例 |
+|---|---|---|
+| 解析 / 支持 / 完整性 / 一致性 | **明确**（帮助集成自查） | `securityReq 格式错误…`、`摘要不匹配…`、`DEK alg 与套件族不符…` |
+| 验签 / 解密 | **模糊**（防 oracle） | 统一 `签名验证失败` / `解密失败`，不区分 tag 失败、密钥不符等细节 |
+| 系统 | `系统繁忙，请稍后重试` | 密钥缺失、运行时缺 WebCrypto |
+
+`WopError` 携带 `category` 字段（`parse` / `unsupported` / `integrity` / `signature` / `decrypt` / `consistency` / `system`）。
+
+## License
+
+MIT © wop-platform
