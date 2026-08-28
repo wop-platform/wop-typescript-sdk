@@ -1,0 +1,96 @@
+import { WopError } from './error';
+
+/**
+ * securityReq 解析与算法套件推导（F1，gateway spec §2/§3.2）。
+ *
+ * 合法取值仅三种：WOP-RSA3072-SHA256 / WOP-RSA4096-SHA256 / WOP-SM2-SM3。
+ * TS 首版按 Q7 裁决仅实现 RSA 套件；SM2-SM3 明确抛"暂未支持"。
+ * 映射集中注册于代码，无运行时配置入口（D13）。
+ */
+
+/** 不可变算法套件：一次请求的算法上下文（§4.4） */
+export interface AlgorithmSuite {
+  readonly securityReq: string;
+  readonly keyAlgorithm: 'RSA';
+  readonly keyLength: 3072 | 4096;
+  readonly digestAlgorithm: 'SHA256';
+  readonly signAlgorithm: 'SHA256withRSA';
+  readonly messageAlgorithm: 'AES-256-GCM';
+  readonly keyWrapAlgorithm: string;
+  readonly digestLabel: 'sha-256';
+  /** 签名 base64url 定长（§3.3①：3072→512 字符，4096→683 字符），格式校验可前置 */
+  readonly signatureB64uLength: 512 | 683;
+  /** DEK 载荷期望 alg（§6.2 一致性比对，bulk 解密前） */
+  readonly expectedDekAlg: 'AES-256-GCM';
+}
+
+const RSA3072_SUITE: AlgorithmSuite = Object.freeze({
+  securityReq: 'WOP-RSA3072-SHA256',
+  keyAlgorithm: 'RSA',
+  keyLength: 3072,
+  digestAlgorithm: 'SHA256',
+  signAlgorithm: 'SHA256withRSA',
+  messageAlgorithm: 'AES-256-GCM',
+  keyWrapAlgorithm: 'RSA-3072-OAEP(SHA-256/MGF1-SHA-256)',
+  digestLabel: 'sha-256',
+  signatureB64uLength: 512,
+  expectedDekAlg: 'AES-256-GCM',
+});
+
+const RSA4096_SUITE: AlgorithmSuite = Object.freeze({
+  securityReq: 'WOP-RSA4096-SHA256',
+  keyAlgorithm: 'RSA',
+  keyLength: 4096,
+  digestAlgorithm: 'SHA256',
+  signAlgorithm: 'SHA256withRSA',
+  messageAlgorithm: 'AES-256-GCM',
+  keyWrapAlgorithm: 'RSA-4096-OAEP(SHA-256/MGF1-SHA-256)',
+  digestLabel: 'sha-256',
+  signatureB64uLength: 683,
+  expectedDekAlg: 'AES-256-GCM',
+});
+
+const SUPPORTED_KEY_ALGS: Record<string, true> = { RSA3072: true, RSA4096: true, SM2: true };
+const SUPPORTED_DIGEST_ALGS: Record<string, true> = { SHA256: true, SM3: true };
+
+const SUITE_CACHE: Record<string, AlgorithmSuite> = {
+  'WOP-RSA3072-SHA256': RSA3072_SUITE,
+  'WOP-RSA4096-SHA256': RSA4096_SUITE,
+};
+/**
+ * 解析 securityReq。失败分类：
+ * - 解析类（parse）：空值、非三段式/空段、前缀非 WOP —— 对外语义明确
+ * - 支持类（unsupported）：算法不在列表、跨族、SM2-SM3 暂未支持 —— 对外语义明确
+ */
+export function parseSecurityReq(securityReq: string): AlgorithmSuite {
+  const cached = SUITE_CACHE[securityReq];
+  if (cached) return cached;
+
+  if (typeof securityReq !== 'string' || securityReq.trim() === '') {
+    throw new WopError(`securityReq 为空或空白，期望格式 WOP-<密钥算法>-<摘要算法>`, 'parse');
+  }
+  const parts = securityReq.split('-');
+  if (parts.length !== 3 || parts[0] !== 'WOP' || parts[1] === '' || parts[2] === '') {
+    throw new WopError(
+      `securityReq "${securityReq}" 格式错误：应为 WOP-<密钥算法>-<摘要算法> 三段式且前缀为 WOP`,
+      'parse',
+    );
+  }
+  const [, keyAlg, digestAlg] = parts as [string, string, string];
+  if (!SUPPORTED_KEY_ALGS[keyAlg] || !SUPPORTED_DIGEST_ALGS[digestAlg]) {
+    throw new WopError(
+      `不支持的算法组合 "${securityReq}"：密钥算法或摘要算法不在支持列表`,
+      'unsupported',
+    );
+  }
+  const keyFamily = keyAlg === 'SM2' ? 'SM2' : 'RSA';
+  const digestFamily = digestAlg === 'SM3' ? 'SM2' : 'RSA';
+  if (keyFamily !== digestFamily) {
+    throw new WopError(
+      `不支持的算法组合 "${securityReq}"：国际/国密跨族组合禁止（I5）`,
+      'unsupported',
+    );
+  }
+  // 走到这里的合法组合只剩 SM2-SM3（Q7：TS 首版暂未支持）
+  throw new WopError('SM2-SM3 套件暂未支持，见 README 路线图', 'unsupported');
+}
