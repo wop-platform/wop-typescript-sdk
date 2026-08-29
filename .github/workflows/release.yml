@@ -2,42 +2,51 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  publish-npm:
+  publish:
     name: Publish to npm
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
+          registry-url: https://registry.npmjs.org/
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: 校验 tag 与 package.json version 一致
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF#refs/tags/}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::tag $TAG_VERSION 与 package.json version $PKG_VERSION 不一致"
+            exit 1
+          fi
 
-      - name: Typecheck
-        run: npm run typecheck
+      - run: npm ci
 
-      - name: Test with coverage gate (>=98%)
+      - run: npm run typecheck
+
+      - name: 测试与覆盖率门禁（≥98% 行+分支）
         run: npm run coverage
 
-      - name: Build
-        run: npm run build
+      - run: npm run build
 
-      # 发布位于 typecheck / 覆盖率门禁 / 构建全部通过之后，
-      # 任一步骤失败即中止，不会留下半发布状态。
-      - name: Publish to npm
+      - name: 发布到 npm
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
