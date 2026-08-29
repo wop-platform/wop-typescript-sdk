@@ -19,19 +19,37 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./axios": {
-      "types": "./dist/axios.d.ts",
-      "import": "./dist/axios.js",
-      "require": "./dist/axios.cjs"
+      "import": {
+        "types": "./dist/axios.d.ts",
+        "default": "./dist/axios.js"
+      },
+      "require": {
+        "types": "./dist/axios.d.cts",
+        "default": "./dist/axios.cjs"
+      }
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "axios": [
+        "dist/axios.d.ts"
+      ]
     }
   },
   "files": [
     "dist"
   ],
+  "sideEffects": false,
   "engines": {
     "node": ">=18"
   },
