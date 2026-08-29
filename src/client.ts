@@ -1,4 +1,4 @@
-import { WopError, SIGNATURE_FAILED } from './error';
+import { WopError, SIGNATURE_FAILED, DECRYPT_FAILED } from './error';
 import { parseSecurityReq } from './suite';
 import type { AlgorithmSuite } from './suite';
 import { canonicalRequest } from './canonical';
@@ -24,8 +24,8 @@ import { FetchTransport } from './transport/fetch';
  *
  * - buildRequest：canonicalRequest → 商户私钥加签 → RequestDraft（L0/L2）
  * - verifyResponse / verifyCallback：F6 固定顺序
- *   验签 → digest 复核 → DEK 解包 → alg 族比对（bulk 前）→ bulk 解密
- * - I7：验签/解密失败对外模糊，其余（解析/支持/完整性/一致性）语义明确
+ *   结构前置校验（套件一致、D2/I1 digest 规则）→ 验签 → digest 复核
+ *   → DEK 解包 → alg 族比对（bulk 前）→ bulk 解密
  * - 确定性：同输入同输出，CSPRNG 项（nonce/IV/DEK）与时间戳可注入（测试/重放）
  */
 
@@ -80,6 +80,12 @@ export interface SendResult extends VerifyResult {
 
 const DEFAULT_EXPIRED_SECONDS = 1800;
 const ENCRYPT_HEADER_PREFIX = 'l2';
+
+/** 签名 base64url 定长（字符）→ 解码字节定长（§3.3①：3072→384B，4096→512B） */
+const SIGNATURE_RAW_LENGTH: Record<AlgorithmSuite['signatureB64uLength'], number> = {
+  512: 384,
+  683: 512,
+};
 
 export class WopClient {
   readonly config: WopConfig;
@@ -250,6 +256,12 @@ export class WopClient {
       }
       const securityReq = signHeader.slice(0, spaceIdx);
       const suite = parseSecurityReq(securityReq);
+      if (securityReq !== this.suite.securityReq) {
+        throw new WopError(
+          `响应套件 "${securityReq}" 与客户端配置 "${this.suite.securityReq}" 不符`,
+          'parse',
+        );
+      }
       const seg = signHeader.slice(spaceIdx + 1).split('/');
       if (seg.length !== 4) {
         throw new WopError(
@@ -262,8 +274,24 @@ export class WopClient {
         throw new WopError('x-wop-sign 格式错误：authString 应为 v1/<expiredSeconds>', 'parse');
       }
 
-      // signedHeaders 声明的头必须齐备（canonical 重建材料）
       const signedNames = signedNamesRaw.split(';').map((s) => s.trim()).filter(Boolean);
+
+      // —— 结构前置校验（公开协议知识，明确拒绝，先于验签）——
+      // D2 有 body 必传 digest；I1 digest 必入 signedHeaders；无 body 不得携带 digest
+      const hasBody = body.length > 0;
+      const digestHeader = headers['x-wop-content-digest'];
+      if (hasBody) {
+        if (digestHeader === undefined) {
+          throw new WopError('有 body 但缺少 x-wop-content-digest 头（D2/I1）', 'integrity');
+        }
+        if (!signedNames.includes('x-wop-content-digest')) {
+          throw new WopError('x-wop-content-digest 未列入 signedHeaders（I1）', 'parse');
+        }
+      } else if (digestHeader !== undefined) {
+        throw new WopError('无响应体不应携带 x-wop-content-digest 头', 'parse');
+      }
+
+      // signedHeaders 声明的头必须齐备（canonical 重建材料）
       const signedValues: Record<string, string> = {};
       for (const name of signedNames) {
         const value = headers[name];
@@ -273,38 +301,41 @@ export class WopClient {
         signedValues[name] = value;
       }
 
-      // —— F6① 验签（平台公钥；定长前置校验 §3.3①）——
-      let sigOk = sigB64u.length === suite.signatureB64uLength;
-      let canonical = '';
-      if (sigOk) {
-        canonical = canonicalRequest({
-          authString: `${protocolVersion}/${expiredSeconds}`,
-          method: 'POST', // 响应/回调出站语义固定 POST（与网关 SignFilter 对齐）
-          path,
-          queryString: '',
-          headers: signedValues,
-        });
-        try {
-          sigOk = await rsaVerify(this.platformPub, fromBase64Url(sigB64u), utf8Encode(canonical));
-        } catch {
-          sigOk = false;
-        }
+      // —— F6① 验签（平台公钥）——
+      // 签名段结构前置校验（公开知识，明确拒绝）：b64url 严格解码（'=' 等
+      // 非法结构 → 协议类，interop 合同 n06 裁决）+ 解码后定长（§3.3①）
+      const sigBytes = fromBase64Url(sigB64u);
+      const sigRawLen = SIGNATURE_RAW_LENGTH[suite.signatureB64uLength]!;
+      if (sigBytes.length !== sigRawLen) {
+        throw new WopError(
+          `签名长度 ${sigBytes.length} 字节与套件 ${suite.securityReq} 定长 ${sigRawLen} 字节不符`,
+          'parse',
+        );
+      }
+      const canonical = canonicalRequest({
+        authString: `${protocolVersion}/${expiredSeconds}`,
+        method: 'POST', // 响应/回调出站语义固定 POST（与网关 SignFilter 对齐）
+        path,
+        queryString: '',
+        headers: signedValues,
+      });
+      let sigOk = true;
+      try {
+        sigOk = await rsaVerify(this.platformPub, sigBytes, utf8Encode(canonical));
+      } catch {
+        sigOk = false;
       }
       if (!sigOk) {
-        // I7：对外模糊，不区分密钥不符/格式/值错
+        // I7：对外模糊，不区分密钥不符/值错
         return { ok: false, reason: SIGNATURE_FAILED };
       }
 
       // —— F6② digest 复核（摘要对象 = wire 原始字节；L2 即密文载体）——
-      const hasBody = body.length > 0;
-      const digestHeader = headers['x-wop-content-digest'];
       if (hasBody) {
-        if (digestHeader === undefined) {
-          throw new WopError('有 body 但缺少 x-wop-content-digest 头（D2/I1）', 'integrity');
-        }
-        verifyDigestHeader(digestHeader, suite); // 格式/跨族 → 明确抛错
+        const dh = digestHeader as string;
+        verifyDigestHeader(dh, suite); // 格式/跨族 → 明确抛错
         const computed = await computeDigestHeader(body);
-        if (computed !== digestHeader) {
+        if (computed !== dh) {
           throw new WopError('摘要不匹配：body 可能被篡改或传输不完整', 'integrity');
         }
       }
@@ -325,9 +356,11 @@ export class WopClient {
         }
         let dek;
         try {
-          dek = parseDekPayload(payload); // 格式 → parse 明确
-        } catch (e) {
-          return { ok: false, reason: (e as WopError).message };
+          dek = parseDekPayload(payload);
+        } catch {
+          // 载荷结构在解包后才可见，属密钥参与层；除 alg 族不符（D8 明确）外
+          // 一律归入解密类模糊（I7 保守默认，interop 合同 n13 裁决）
+          return { ok: false, reason: DECRYPT_FAILED };
         }
         if (dek.alg !== suite.expectedDekAlg) {
           throw new WopError(

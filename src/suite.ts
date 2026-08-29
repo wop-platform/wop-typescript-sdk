@@ -50,8 +50,9 @@ const RSA4096_SUITE: AlgorithmSuite = Object.freeze({
   expectedDekAlg: 'AES-256-GCM',
 });
 
-const SUPPORTED_KEY_ALGS: Record<string, true> = { RSA3072: true, RSA4096: true, SM2: true };
-const SUPPORTED_DIGEST_ALGS: Record<string, true> = { SHA256: true, SM3: true };
+/** 密钥/摘要算法 → 密码族：支持列表与跨族校验（I5）的单一事实源 */
+const KEY_ALG_FAMILY: Record<string, 'RSA' | 'SM2'> = { RSA3072: 'RSA', RSA4096: 'RSA', SM2: 'SM2' };
+const DIGEST_ALG_FAMILY: Record<string, 'RSA' | 'SM2'> = { SHA256: 'RSA', SM3: 'SM2' };
 
 const SUITE_CACHE: Record<string, AlgorithmSuite> = {
   'WOP-RSA3072-SHA256': RSA3072_SUITE,
@@ -77,14 +78,14 @@ export function parseSecurityReq(securityReq: string): AlgorithmSuite {
     );
   }
   const [, keyAlg, digestAlg] = parts as [string, string, string];
-  if (!SUPPORTED_KEY_ALGS[keyAlg] || !SUPPORTED_DIGEST_ALGS[digestAlg]) {
+  const keyFamily = KEY_ALG_FAMILY[keyAlg];
+  const digestFamily = DIGEST_ALG_FAMILY[digestAlg];
+  if (!keyFamily || !digestFamily) {
     throw new WopError(
       `不支持的算法组合 "${securityReq}"：密钥算法或摘要算法不在支持列表`,
       'unsupported',
     );
   }
-  const keyFamily = keyAlg === 'SM2' ? 'SM2' : 'RSA';
-  const digestFamily = digestAlg === 'SM3' ? 'SM2' : 'RSA';
   if (keyFamily !== digestFamily) {
     throw new WopError(
       `不支持的算法组合 "${securityReq}"：国际/国密跨族组合禁止（I5）`,

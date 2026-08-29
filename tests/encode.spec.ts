@@ -42,6 +42,25 @@ describe('base64url 编解码', () => {
     expect(() => fromBase64Url('a')).toThrowError(/base64url/);
   });
 
+  it('严格模式：拒收非规范尾随位（RFC 4648 §3.5，对齐 Go RawURLEncoding.Strict()）', () => {
+    expect(() => fromBase64Url('aE')).toThrowError(/尾随位/); // %4==2 尾字符 E=4，低 4 位非零
+    expect(() => fromBase64Url('TWF')).toThrowError(/尾随位/); // %4==3 尾字符 F=5，低 2 位非零
+  });
+
+  it('规范尾随位收下：AA→1 字节 0x00、TWE→2 字节 "Ma"', () => {
+    expect(Array.from(fromBase64Url('AA'))).toEqual([0x00]);
+    expect(Array.from(fromBase64Url('TWE'))).toEqual([0x4d, 0x61]);
+    expect(utf8Decode(fromBase64Url('TWE'))).toBe('Ma');
+  });
+
+  it('全 256 单字节值编码恒规范（构造性对拍：%4==2 尾字符低 4 位恒零）', () => {
+    for (let b = 0; b < 256; b++) {
+      const s = toBase64Url(new Uint8Array([b]));
+      expect(s).toHaveLength(2);
+      expect(Array.from(fromBase64Url(s)), `b=${b}`).toEqual([b]);
+    }
+  });
+
   it('空串解码为空字节', () => {
     expect(fromBase64Url('')).toEqual(new Uint8Array(0));
   });

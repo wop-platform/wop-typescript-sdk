@@ -1,14 +1,18 @@
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { FetchTransport } from '../src/transport/fetch';
+import { FetchTransport, MAX_RESPONSE_BYTES } from '../src/transport/fetch';
 import type { Transport } from '../src/transport/types';
+import { AxiosTransport } from '../src/transport/axios';
 import { WopClient } from '../src/client';
 import { rsaSign } from '../src/crypto';
 import { canonicalRequest } from '../src/canonical';
 import { computeDigestHeader } from '../src/digest';
+import { WopError } from '../src/error';
 import { fromBase64, toBase64Url, utf8Encode } from '../src/encode';
 import vectors from './fixtures/crypto-vectors.json';
 
-const PLAT_PRIV = vectors.keys.rsa4096!.privatePkcs8B64;
+const PLAT_PRIV = vectors.keys.rsa3072!.privatePkcs8B64; // 套件一致纪律：响应签名套件须与客户端配置一致（interop n11）
 
 describe('FetchTransport（原生 fetch 适配器）', () => {
   const originalFetch = globalThis.fetch;
@@ -83,7 +87,12 @@ describe('AxiosTransport（peer 适配器，mock axios）', () => {
     const t = new AxiosTransport({ request } as unknown as import('axios').AxiosInstance);
     const resp = await t.send({ method: 'POST', url: 'https://gw/v1', headers: { k: 'v' }, body: 'b' });
     expect(request).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://gw/v1', method: 'POST', responseType: 'text' }),
+      expect.objectContaining({
+        url: 'https://gw/v1',
+        method: 'POST',
+        responseType: 'text',
+        maxContentLength: MAX_RESPONSE_BYTES,
+      }),
     );
     expect(resp.status).toBe(200);
     expect(resp.headers['x-wop-sign']).toBe('s');
@@ -125,13 +134,112 @@ describe('AxiosTransport（peer 适配器，mock axios）', () => {
   });
 });
 
+describe('响应体 11MiB 上限（与 dotnet MaxResponseBytes / Go maxResponseBytes 对齐）', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('FetchTransport：恰好 11MiB 收下（边界，=）', async () => {
+    const body = 'a'.repeat(MAX_RESPONSE_BYTES);
+    globalThis.fetch = vi.fn(async () => new Response(body, { status: 200 })) as unknown as typeof fetch;
+    const resp = await new FetchTransport().send({ method: 'GET', url: 'https://x', headers: {}, body: '' });
+    expect(resp.status).toBe(200);
+    expect(resp.body).toHaveLength(MAX_RESPONSE_BYTES);
+  });
+
+  it('FetchTransport：无限流越限（11MiB+1 起）——读取过程中断流并抛协议类错误', async () => {
+    const chunk = new Uint8Array(1024 * 1024).fill(0x61); // 1MiB
+    let pulls = 0;
+    let cancelled = false;
+    const infinite = new ReadableStream<Uint8Array>({
+      // 无限源：若非流式计数中途断流，本测试永不结束
+      pull: (c) => {
+        pulls++;
+        c.enqueue(chunk);
+      },
+      cancel: () => {
+        cancelled = true;
+      },
+    });
+    globalThis.fetch = vi.fn(async () => new Response(infinite, { status: 200 })) as unknown as typeof fetch;
+    let caught: unknown;
+    try {
+      await new FetchTransport().send({ method: 'GET', url: 'https://x', headers: {}, body: '' });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(WopError);
+    expect((caught as WopError).category).toBe('parse');
+    expect((caught as WopError).message).toContain(`响应体超过 ${MAX_RESPONSE_BYTES} 字节上限`);
+    expect(cancelled).toBe(true); // 越限即取消下载，而非读完再查
+    expect(pulls).toBeLessThanOrEqual(13); // 11MiB 恰不触发，第 12 个 chunk 越限即断（+1 预读水位）
+  });
+
+  it('FetchTransport：取消失败不掩盖超限语义（cancel reject 路径）', async () => {
+    const chunk = new Uint8Array(1024 * 1024).fill(0x61);
+    const infinite = new ReadableStream<Uint8Array>({
+      pull: (c) => c.enqueue(chunk),
+      cancel: () => {
+        throw new Error('cancel failed');
+      },
+    });
+    globalThis.fetch = vi.fn(async () => new Response(infinite, { status: 200 })) as unknown as typeof fetch;
+    await expect(
+      new FetchTransport().send({ method: 'GET', url: 'https://x', headers: {}, body: '' }),
+    ).rejects.toThrowError(/响应体超过/);
+  });
+
+  it('AxiosTransport（真实 axios + 本地 HTTP）：越限（11MiB+1）映射为协议类错误', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/octet-stream' });
+      res.end(Buffer.alloc(MAX_RESPONSE_BYTES + 1, 0x61));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const { port } = server.address() as AddressInfo;
+    let caught: unknown;
+    try {
+      await new AxiosTransport().send({ method: 'GET', url: `http://127.0.0.1:${port}/big`, headers: {}, body: '' });
+    } catch (e) {
+      caught = e;
+    } finally {
+      server.close();
+    }
+    expect(caught).toBeInstanceOf(WopError);
+    expect((caught as WopError).category).toBe('parse');
+    expect((caught as WopError).message).toContain(`响应体超过 ${MAX_RESPONSE_BYTES} 字节上限`);
+  });
+
+  it('AxiosTransport（真实 axios + 本地 HTTP）：恰好 11MiB 收下（边界，=）', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/octet-stream' });
+      res.end(Buffer.alloc(MAX_RESPONSE_BYTES, 0x61));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const { port } = server.address() as AddressInfo;
+    try {
+      const resp = await new AxiosTransport().send({
+        method: 'GET',
+        url: `http://127.0.0.1:${port}/exact`,
+        headers: {},
+        body: '',
+      });
+      expect(resp.status).toBe(200);
+      expect(resp.body).toHaveLength(MAX_RESPONSE_BYTES);
+    } finally {
+      server.close();
+    }
+  });
+});
+
 describe('WopClient.send（Transport 编排）', () => {
   it('gatewayBaseUrl 未配置 → 系统类错误', async () => {
     const client = new WopClient({
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
     await expect(client.send('POST', '/p', '{"a":1}')).rejects.toThrowError(/gatewayBaseUrl/);
   });
@@ -141,7 +249,7 @@ describe('WopClient.send（Transport 编排）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
       gatewayBaseUrl: 'https://gw.example.com',
     });
     const PATH = '/v1/order/create';
@@ -161,7 +269,7 @@ describe('WopClient.send（Transport 编排）', () => {
       headers,
     });
     const sig = await rsaSign(fromBase64(PLAT_PRIV), utf8Encode(canonical));
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${signed.join(';')}/${toBase64Url(sig)}`;
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${signed.join(';')}/${toBase64Url(sig)}`;
 
     const fetchMock = vi.fn(async () =>
       new Response(respBody, { status: 200, headers }),
@@ -185,7 +293,7 @@ describe('WopClient.send（Transport 编排）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
       gatewayBaseUrl: 'https://gw',
     });
     const mockTransport: Transport = {

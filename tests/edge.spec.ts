@@ -61,7 +61,7 @@ describe('client 边界（F6/L2 深层分支）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
   }
 
@@ -88,10 +88,10 @@ describe('client 边界（F6/L2 深层分支）', () => {
       headers,
     });
     const sig = await rsaSign(
-      fromBase64(vectors.keys.rsa4096!.privatePkcs8B64),
+      fromBase64(vectors.keys.rsa3072!.privatePkcs8B64),
       utf8Encode(canonical),
     );
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
     const r = await makeClient().verifyResponse(headers, body, '/p');
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('dek=');
@@ -114,10 +114,10 @@ describe('client 边界（F6/L2 深层分支）', () => {
       headers,
     });
     const sig = await rsaSign(
-      fromBase64(vectors.keys.rsa4096!.privatePkcs8B64),
+      fromBase64(vectors.keys.rsa3072!.privatePkcs8B64),
       utf8Encode(canonical),
     );
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
     const r = await makeClient().verifyResponse(headers, body, '/p');
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('base64url');
@@ -140,10 +140,10 @@ describe('client 边界（F6/L2 深层分支）', () => {
       headers,
     });
     const sig = await rsaSign(
-      fromBase64(vectors.keys.rsa4096!.privatePkcs8B64),
+      fromBase64(vectors.keys.rsa3072!.privatePkcs8B64),
       utf8Encode(canonical),
     );
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
     const r = await makeClient().verifyResponse(headers, body, '/p');
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('JSON');
@@ -157,7 +157,7 @@ describe('client 深层分支补测', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
   }
 
@@ -167,15 +167,17 @@ describe('client 深层分支补测', () => {
     expect(r.reason).toContain('空格');
   });
 
-  it('签名段定长但含 = 填充 → 验签失败（模糊）', async () => {
+  it('签名段含 = 填充 → 协议类明确拒绝（b64url 非法结构，interop n06 裁决）', async () => {
     const r = await makeClient().verifyResponse(
       { 'x-wop-sign': `WOP-RSA3072-SHA256 v1/1800/x-wop-nonce/${'A'.repeat(511)}=`, 'x-wop-nonce': 'n' },
       '',
       '/p',
     );
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe('签名验证失败');
+    expect(r.reason).toContain('base64url'); // 公开结构知识，明确语义
+    expect(r.reason).not.toBe('签名验证失败'); // 非验签模糊（I7）
   });
+
 
 
   it('L2 默认 CSPRNG 生成 DEK/IV（不注入）成功出签', async () => {
@@ -183,13 +185,13 @@ describe('client 深层分支补测', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
     const draft = await c.buildRequest('POST', '/p', '{"a":1}', { level: 'L2' });
     expect(draft.headers['x-wop-encrypt']).toMatch(/^L2;dek=[A-Za-z0-9_-]+$/);
     expect(draft.wireBody).toMatch(/^\{"encrypted":"/);
   });
-  it('DEK 解包成功但载荷格式坏（无 $ 分隔）→ 明确格式错误', async () => {
+  it('DEK 解包成功但载荷格式坏（无 $ 分隔）→ 解密类模糊（I7 保守默认，interop n13 裁决）', async () => {
     const wrapped = await oaepWrap(
       fromBase64(vectors.keys.rsa3072!.publicSpkiB64),
       utf8Encode('garbage-no-delimiter'),
@@ -208,11 +210,12 @@ describe('client 深层分支补测', () => {
       queryString: '',
       headers,
     });
-    const sig = await rsaSign(fromBase64(vectors.keys.rsa4096!.privatePkcs8B64), utf8Encode(canonical));
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
+    const sig = await rsaSign(fromBase64(vectors.keys.rsa3072!.privatePkcs8B64), utf8Encode(canonical));
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${names.join(';')}/${toBase64Url(sig)}`;
     const r = await makeClient().verifyResponse(headers, body, '/p');
     expect(r.ok).toBe(false);
-    expect(r.reason).toContain('alg$key$iv');
+    expect(r.reason).toBe('解密失败'); // 载荷结构解包后才可见，对外模糊
+    expect(r.reason).not.toMatch(/alg\$key\$iv/); // 不泄漏载荷结构细节
   });
 
   it('WopConfig 为 null → 立即抛错', () => {

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { WopError } from '../error';
+import { MAX_RESPONSE_BYTES } from './fetch';
 import type { Transport, TransportRequest, TransportResponse } from './types';
 
 /**
@@ -22,12 +23,17 @@ export class AxiosTransport implements Transport {
         headers: request.headers,
         data: request.body,
         responseType: 'text',
+        maxContentLength: MAX_RESPONSE_BYTES, // http 适配器流式计数，越限即断流
       });
       return { status: resp.status, headers: flattenHeaders(resp.headers), body: asText(resp.data) };
     } catch (e) {
-      const withResponse = e as { response?: { status: number; headers?: unknown; data?: unknown } };
-      if (withResponse.response) {
-        const r = withResponse.response;
+      const err = e as Error & { response?: { status: number; headers?: unknown; data?: unknown } };
+      // axios 流式超限错误（无 response，code=ERR_BAD_RESPONSE）：映射为协议类错误，与 FetchTransport 对齐
+      if (/maxContentLength size of \d+ exceeded/.test(err.message ?? '')) {
+        throw new WopError(`响应体超过 ${MAX_RESPONSE_BYTES} 字节上限`, 'parse');
+      }
+      if (err.response) {
+        const r = err.response;
         return { status: r.status, headers: flattenHeaders(r.headers), body: asText(r.data) };
       }
       throw new WopError(`请求发送失败：${(e as Error).message ?? e}`, 'system');
