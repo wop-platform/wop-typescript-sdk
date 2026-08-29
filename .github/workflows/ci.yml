@@ -41,6 +41,18 @@ jobs:
       - name: 编译类型消费方工程（dist d.ts 对 TS 下界/最新的语法兼容）
         run: npx -y -p typescript@${{ matrix.ts }} tsc -p tests/type-consumer
 
+  typecheck-latest:
+    name: typecheck TS latest（主仓前瞻雷达）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: 主仓源码 tsc --noEmit @ typescript@latest（devDeps 升级前预警）
+        run: npx -y -p typescript@latest tsc --noEmit
+
   axios-matrix:
     name: axios ${{ matrix.axios }}
     runs-on: ubuntu-latest

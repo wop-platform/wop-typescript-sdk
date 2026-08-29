@@ -7,6 +7,7 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 - 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
 - **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥18 / 浏览器安全上下文）
 - **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
+- **兼容性矩阵 CI 验证**：Node 18–24 × axios 1.0–latest × TypeScript **5.0–7.0**（类型消费下界 5.0，前瞻至最新大版本），发布物 ESM/CJS × node10/node16/bundler 四解析模式 + API 快照门禁
 - **行 / 分支 / 函数 / 语句覆盖率 100%**，黄金测试向量字节级锚定
 
 ## 支持的算法套件

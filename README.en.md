@@ -7,6 +7,7 @@ or wire byte formats.
 
 - **Zero runtime dependencies**: all cryptography via WebCrypto (`globalThis.crypto`, Node ≥18 / browser secure context)
 - **Protocol core + pluggable transport**: built-in native `fetch` adapter; `axios` shipped as a peer adapter behind a separate entry point
+- **CI-verified compatibility matrix**: Node 18–24 × axios 1.0–latest × TypeScript **5.0–7.0** (type-consumer floor 5.0, forward-probing to the latest major), published artifacts checked across ESM/CJS × node10/node16/bundler resolutions + API snapshot gate
 - **100% line / branch / function / statement coverage**, byte-level anchored to golden test vectors
 
 ## Supported algorithm suites

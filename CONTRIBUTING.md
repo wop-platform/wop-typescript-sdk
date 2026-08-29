@@ -8,7 +8,7 @@
 |---|---|
 | Node.js | ≥ 18（CI 矩阵验证 18 / 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
 | 包管理器 | npm（使用 `package-lock.json` 锁定，CI 走 `npm ci`） |
-| TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证） |
+| TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证）；`typecheck-latest` job 以 typescript@latest 跑主仓 typecheck，作 devDeps 升级前的**前瞻雷达**（当前 latest = 7.0，主仓已验证兼容） |
 | 测试 | vitest ^3.2 + `@vitest/coverage-v8` |
 | peer 下界 | axios ≥1.0.0（CI `axios-matrix` job 以 1.0.0 + latest 换装验证 transport 测试与 dist 冒烟） |
 | 构建 | tsup ^8.5（ESM/CJS 双格式 + dts，target es2022） |
