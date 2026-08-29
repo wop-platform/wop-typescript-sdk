@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeDigestHeader, verifyDigestHeader } from '../src/digest';
 import { parseSecurityReq } from '../src/suite';
 import { WopError } from '../src/error';
-import { utf8Encode } from '../src/encode';
+import { utf8Encode, fromBase64Url, utf8Decode } from '../src/encode';
 import vectors from './fixtures/crypto-vectors.json';
 
 const RSA_SUITE = parseSecurityReq('WOP-RSA3072-SHA256');
@@ -22,52 +22,89 @@ describe('x-wop-content-digest 计算（F4，向量字节级）', () => {
   });
 });
 
-describe('digest header 校验（D2 格式钉 + formatRules 向量）', () => {
+describe('formatRules 全量消费（三件套：循环全量 + 未知 id 哨兵 + 条数哨兵）', () => {
   type Rule = { id: string; value: string; expect: string; suite?: string; note?: string };
+  const rules = vectors.formatRules as Rule[];
 
-  it('header-rsa-ok：合法值通过（A1）', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-rsa-ok') as Rule;
-    const parsed = verifyDigestHeader(rule.value, RSA_SUITE)!;
-    expect(parsed.hex).toBe('23592263765cf506d07cc8614c09067e6de38e64c53e5b672c022532d01737cf');
+  it('条数哨兵：formatRules 必须为 12 条（fixture 与真源漂移即炸）', () => {
+    expect(rules).toHaveLength(12);
   });
 
-  it('header-sm2-ok：SM2 套件在 TS 首版必须拒（Q7 负测试）', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-sm2-ok') as Rule;
-    expect(rule.suite).toBe('WOP-SM2-SM3');
-    expect(() => parseSecurityReq(rule.suite!)).toThrowError(/SM2-SM3 套件暂未支持/);
-  });
-
-  it('header-crossfamily：sm3 标签配 RSA 套件拒绝（I5）', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-crossfamily') as Rule;
-    expect(() => verifyDigestHeader(rule.value, RSA_SUITE)).toThrowError(WopError);
-    try {
-      verifyDigestHeader(rule.value, RSA_SUITE);
-    } catch (e) {
-      expect((e as WopError).category).toBe('unsupported');
-      expect((e as WopError).message).toContain('跨族');
+  it('循环全量：每条向量被消费且向量自述 expect 与本仓实际行为一致（未知 id 即炸）', () => {
+    for (const r of rules) {
+      let outcome: 'accept' | 'reject';
+      switch (r.id) {
+        case 'header-rsa-ok': {
+          const parsed = verifyDigestHeader(r.value, RSA_SUITE);
+          expect(parsed!.hex, r.id).toBe(r.value.slice('sha-256 '.length));
+          outcome = 'accept';
+          break;
+        }
+        case 'header-sm2-ok':
+          // Q7：TS 首版无 SM2 套件——套件解析必须显式拒（本仓行为 reject；向量自述 accept 为 SM2 仓语义）
+          expect(() => parseSecurityReq(r.suite!), r.id).toThrowError(/SM2-SM3 套件暂未支持/);
+          outcome = 'reject';
+          break;
+        case 'header-crossfamily': {
+          let caught: unknown;
+          try {
+            verifyDigestHeader(r.value, RSA_SUITE);
+          } catch (e) {
+            caught = e;
+          }
+          expect(caught, r.id).toBeInstanceOf(WopError);
+          expect((caught as WopError).category, r.id).toBe('unsupported');
+          expect((caught as WopError).message, r.id).toContain('跨族');
+          outcome = 'reject';
+          break;
+        }
+        case 'header-double-space':
+        case 'header-wrong-hex-len':
+          expect(() => verifyDigestHeader(r.value, RSA_SUITE), r.id).toThrowError(WopError);
+          outcome = 'reject';
+          break;
+        case 'header-uppercase-hex': {
+          let caught: unknown;
+          try {
+            verifyDigestHeader(r.value, RSA_SUITE);
+          } catch (e) {
+            caught = e;
+          }
+          expect(caught, r.id).toBeInstanceOf(WopError);
+          expect((caught as WopError).category, r.id).toBe('parse');
+          expect((caught as WopError).message, r.id).toContain('小写');
+          outcome = 'reject';
+          break;
+        }
+        case 'b64url-with-padding':
+        case 'b64url-illegal-char':
+        case 'b64url-trailing-bits-noncanonical-2': // D10/F6 严格性补钉（spec 升格向量）
+        case 'b64url-trailing-bits-noncanonical-3':
+          expect(() => fromBase64Url(r.value), r.id).toThrowError(/base64url/);
+          outcome = 'reject';
+          break;
+        case 'b64url-trailing-bits-canonical-2': {
+          const bytes = fromBase64Url(r.value);
+          expect(Array.from(bytes), r.id).toEqual([0x00]); // 1 字节 0x00
+          outcome = 'accept';
+          break;
+        }
+        case 'b64url-trailing-bits-canonical-3': {
+          const bytes = fromBase64Url(r.value);
+          expect(Array.from(bytes), r.id).toEqual([0x4d, 0x61]);
+          expect(utf8Decode(bytes), r.id).toBe('Ma'); // 2 字节 "Ma"
+          outcome = 'accept';
+          break;
+        }
+        default:
+          throw new Error(`未预期 formatRules 向量：${r.id}（真源升级后须同步补消费分支）`);
+      }
+      expect(outcome, `${r.id}（${r.note ?? r.value}）`).toBe(r.id === 'header-sm2-ok' ? 'reject' : r.expect);
     }
   });
+});
 
-  it('header-double-space：恰一空格，多余空白拒绝（D2）', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-double-space') as Rule;
-    expect(() => verifyDigestHeader(rule.value, RSA_SUITE)).toThrowError(WopError);
-  });
-
-  it('header-uppercase-hex：大写 hex 拒绝（F5 小写钉）', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-uppercase-hex') as Rule;
-    try {
-      verifyDigestHeader(rule.value, RSA_SUITE);
-      expect.unreachable();
-    } catch (e) {
-      expect((e as WopError).category).toBe('parse');
-      expect((e as WopError).message).toContain('小写');
-    }
-  });
-
-  it('header-wrong-hex-len：长度非 64 拒绝', () => {
-    const rule = vectors.formatRules.find((r) => r.id === 'header-wrong-hex-len') as Rule;
-    expect(() => verifyDigestHeader(rule.value, RSA_SUITE)).toThrowError(WopError);
-  });
+describe('digest header 校验（D2 格式钉）', () => {
 
   it('更多负格式：缺空格/未知标签/非 hex 字符/空值', () => {
     for (const bad of [
