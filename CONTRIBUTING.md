@@ -6,7 +6,7 @@
 
 | 项 | 要求 |
 |---|---|
-| Node.js | ≥ 18（CI 矩阵验证 18 / 20 / 22，与 `package.json` `engines.node` 一致） |
+| Node.js | ≥ 18（CI 矩阵验证 18 / 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
 | 包管理器 | npm（使用 `package-lock.json` 锁定，CI 走 `npm ci`） |
 | TypeScript | ^5.9（`tsc --noEmit` 类型检查） |
 | 测试 | vitest ^3.2 + `@vitest/coverage-v8` |
@@ -30,6 +30,7 @@ npm ci              # 干净安装（CI 同款）
 npm run typecheck   # tsc --noEmit，全仓类型检查
 npm run coverage    # vitest run --coverage，全量测试 + 覆盖率门禁
 npm run build       # tsup 产物构建（dist/ ESM+CJS+dts，index 与 axios 双入口）
+npm run test:dist   # 产物门禁：publint + attw 四解析模式 + dist 双格式冒烟（须先 build）
 npm test            # 仅跑测试（vitest run，不出覆盖率）
 ```
 
@@ -82,7 +83,7 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 ## PR 流程
 
 1. 基于 `main` 分支拉特性分支，PR 目标为 `main`。
-2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build`，Node 18/20/22 三矩阵。
+2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`，Node 18/20/22/24 四矩阵。
 3. **向量合规全绿**：触碰 `tests/fixtures/crypto-vectors.json` 或协议路径的 PR，reviewer 必须复核向量来源（网关真源）与负向量覆盖。
 4. 至少一名 reviewer 通过后合并；spec 条款与实现冲突时**上报裁决**，不得以"既有实现"为由顺延 spec。
 
