@@ -24,6 +24,6 @@
 
 ## 击杀资产说明
 
-- 击杀资产 = vitest 全量套件（13 文件 174 测试），不含 cucumber-js BDD（独立运行器）。
+- 击杀资产 = vitest 全量套件（13 文件 175 测试；Node 18 下快路径 identity 用例按 skipIf 跳过，由回退契约用例覆盖），不含 cucumber-js BDD（独立运行器）。
 - 门禁：`npm run test:mutation`，击杀率 < 90% 时 exit 1。
 - 每轮报告：`tests/mutation/report.json`；src 恢复完整性由脚本末尾字节校验保证。

@@ -445,9 +445,18 @@ describe('transport：系统类错误 category 与流式 UTF-8 拼接（D4 注�
   });
 });
 
-describe('crypto.ts：webcrypto 直取全局（Node 18 快路径 identity）', () => {
+// Node 18 默认不启用全局 WebCrypto（Node 19+ 才默认开启），identity 断言仅在全局可用的运行时有意义；
+// Node 18 下 crypto.ts 走 node:crypto.webcrypto 回退，由第二条用例覆盖。
+const globalWebcrypto: Crypto | undefined = globalThis.crypto?.subtle ? globalThis.crypto : undefined;
+
+describe.skipIf(!globalWebcrypto)('crypto.ts：webcrypto 直取全局（快路径 identity，Node ≥19）', () => {
   it('全局 subtle 存在时返回 globalThis.crypto 本体', async () => {
-    expect(globalThis.crypto?.subtle).toBeDefined();
     expect(await webcrypto()).toBe(globalThis.crypto);
+  });
+});
+
+describe('crypto.ts：webcrypto 回退契约（全 Node 版本）', () => {
+  it('返回实现恒具备 subtle（Node 18 无全局时回退 node:crypto.webcrypto）', async () => {
+    expect((await webcrypto()).subtle).toBeDefined();
   });
 });
