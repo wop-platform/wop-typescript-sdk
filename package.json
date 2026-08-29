@@ -1,6 +1,6 @@
 {
   "name": "@wanlianyida/wop-typescript-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "WOP 商户侧官方 TypeScript SDK：协议核心（签名/摘要/L2 数字信封/验签解密）+ 可插拔 HTTP 适配层",
   "type": "module",
   "license": "MIT",
@@ -54,12 +54,12 @@
     "node": ">=18"
   },
   "scripts": {
-  "build": "tsup",
-  "test": "vitest run",
-  "test:watch": "vitest",
-  "test:dist": "publint && attw --pack . && node tests/smoke.cjs && node tests/smoke.mjs",
-  "coverage": "vitest run --coverage",
-  "typecheck": "tsc --noEmit"
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:dist": "publint && attw --pack . && node tests/smoke.cjs && node tests/smoke.mjs",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "wop",
