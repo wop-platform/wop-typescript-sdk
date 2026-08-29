@@ -15,7 +15,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
       "@wanlianyida/wop-typescript-sdk": ["../../dist/index.d.ts"],
       "@wanlianyida/wop-typescript-sdk/axios": ["../../dist/axios.d.ts"]
