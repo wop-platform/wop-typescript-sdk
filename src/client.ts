@@ -60,7 +60,7 @@ export interface RequestDraft {
   path: string;
   /** 含 x-wop-sign 在内的全部请求头 */
   headers: Record<string, string>;
-  /** 线上请求体：L0 原文 / L2 {"encrypted":…} */
+  /** 线上请求体：L0 原文 / L2 密文载体（JSON 单字段 encrypted，值 base64url） */
   wireBody: string;
 }
 

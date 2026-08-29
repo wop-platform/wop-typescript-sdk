@@ -57,7 +57,8 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:dist": "publint && attw --pack . && node tests/smoke.cjs && node tests/smoke.mjs",
+    "test:dist": "publint && attw --pack . && api-extractor run && api-extractor run -c api-extractor.axios.json && node tests/smoke.cjs && node tests/smoke.mjs",
+    "api:snapshot": "api-extractor run --local && api-extractor run --local -c api-extractor.axios.json",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
@@ -79,6 +80,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@microsoft/api-extractor": "^7.59.0",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^3.2.4",
     "axios": "^1.13.2",
