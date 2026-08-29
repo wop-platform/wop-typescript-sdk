@@ -9,11 +9,12 @@ import vectors from './fixtures/crypto-vectors.json';
 
 const K = vectors.keys;
 
-// 商户密钥对 = rsa3072 向量；平台密钥对 = rsa4096 向量（异钥防串联错位）
+// 套件一致性纪律（interop n11 合同：响应 sign 头套件必须与客户端配置一致；黄金
+// 向量每套件仅一对密钥）：商户/平台两角色共用 rsa3072 向量对，套件统一 3072。
 const MERCH_PRIV = K.rsa3072!.privatePkcs8B64;
 const MERCH_PUB = K.rsa3072!.publicSpkiB64;
-const PLAT_PRIV = K.rsa4096!.privatePkcs8B64;
-const PLAT_PUB = K.rsa4096!.publicSpkiB64;
+const PLAT_PRIV = K.rsa3072!.privatePkcs8B64;
+const PLAT_PUB = K.rsa3072!.publicSpkiB64;
 
 const BODY = JSON.stringify({ orderId: '20260829001', amount: 100 });
 
@@ -67,7 +68,7 @@ async function platformRespond(
     headers,
   });
   const sig = await rsaSign(fromBase64(PLAT_PRIV), utf8Encode(canonical));
-  headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${signedNames.join(';')}/${toBase64Url(sig)}`;
+  headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${signedNames.join(';')}/${toBase64Url(sig)}`;
   return { headers, body: wireBody };
 }
 
@@ -83,7 +84,7 @@ async function resign(path: string, headers: Record<string, string>): Promise<Re
     headers,
   });
   const sig = await rsaSign(fromBase64(PLAT_PRIV), utf8Encode(canonical));
-  headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${signedNames.join(';')}/${toBase64Url(sig)}`;
+  headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${signedNames.join(';')}/${toBase64Url(sig)}`;
   return headers;
 }
 
@@ -217,7 +218,7 @@ describe('buildRequest（F3/F4/F5/F9）', () => {
     expect(draft.headers['x-wop-sign']).toMatch(
       /x-wop-appkey;x-wop-content-digest;x-wop-encrypt;x-wop-nonce;x-wop-timestamp\//,
     );
-    // 网关视角：解包 DEK（平台私钥 4096）→ 解密回环
+    // 网关视角：解包 DEK（平台私钥）→ 解密回环
     const dekB64u = draft.headers['x-wop-encrypt']!.slice('L2;dek='.length);
     const payload = utf8Decode(await oaepUnwrap(fromBase64(PLAT_PRIV), fromBase64Url(dekB64u)));
     expect(payload).toBe(buildDekPayload('AES-256-GCM', dek, iv));
@@ -351,13 +352,14 @@ describe('verifyResponse / verifyCallback（F6 顺序 + I7 模糊化）', () => 
     expect((await client.verifyResponse(headers, body, PATH)).reason).toContain('v1');
   });
 
-  it('签名定长校验前置：长度不符 → 验签失败（模糊）', async () => {
+  it('签名定长校验前置：解码字节长度不符 → 明确协议类拒绝（§3.3①/interop n07 等价）', async () => {
     const client = makeClient();
     const { headers, body } = await platformRespond(PATH, BODY);
-    headers['x-wop-sign'] = headers['x-wop-sign']!.slice(0, -1);
+    headers['x-wop-sign'] = headers['x-wop-sign']!.slice(0, -4); // 508 字符（%4==0）→ 解码 381B ≠ 384B
     const r = await client.verifyResponse(headers, body, PATH);
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe('签名验证失败');
+    expect(r.reason).toContain('定长');
+    expect(r.reason).not.toBe('签名验证失败'); // 结构类公开知识，非验签模糊（I7）
   });
 
   it('signedHeaders 声明的头缺失 → 明确 reason', async () => {
@@ -372,7 +374,7 @@ describe('verifyResponse / verifyCallback（F6 顺序 + I7 模糊化）', () => 
   it('响应套件为 SM2-SM3 → 明确"暂未支持"（Q7）', async () => {
     const client = makeClient();
     const { headers, body } = await platformRespond(PATH, BODY);
-    headers['x-wop-sign'] = headers['x-wop-sign']!.replace('WOP-RSA4096-SHA256', 'WOP-SM2-SM3');
+    headers['x-wop-sign'] = headers['x-wop-sign']!.replace('WOP-RSA3072-SHA256', 'WOP-SM2-SM3');
     const r = await client.verifyResponse(headers, body, PATH);
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('SM2-SM3 套件暂未支持');

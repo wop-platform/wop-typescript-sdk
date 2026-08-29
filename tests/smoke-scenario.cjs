@@ -18,12 +18,12 @@ const vectors = JSON.parse(
   readFileSync(path.join(__dirname, 'fixtures', 'crypto-vectors.json'), 'utf8'),
 );
 
-// 商户密钥对 = rsa3072 向量；平台密钥对 = rsa4096（异钥防串联错位，与 client.spec.ts 同构）
+// 套件一致性纪律（interop n11：响应签名套件须与客户端配置一致；向量每套件仅一对密钥，与 client.spec.ts 同构）
 const K = vectors.keys;
 const MERCH_PRIV = K.rsa3072.privatePkcs8B64;
 const MERCH_PUB = K.rsa3072.publicSpkiB64;
-const PLAT_PRIV = K.rsa4096.privatePkcs8B64;
-const PLAT_PUB = K.rsa4096.publicSpkiB64;
+const PLAT_PRIV = K.rsa3072.privatePkcs8B64;
+const PLAT_PUB = K.rsa3072.publicSpkiB64;
 
 const BODY = JSON.stringify({ orderId: '20260829001', amount: 100 });
 const PATH = '/v1/order/create';
@@ -67,7 +67,7 @@ async function platformRespond(sdk, plainBody) {
     headers,
   });
   const sig = await sdk.rsaSign(sdk.fromBase64(PLAT_PRIV), sdk.utf8Encode(canonical));
-  headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${signedNames.join(';')}/${sdk.toBase64Url(sig)}`;
+  headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${signedNames.join(';')}/${sdk.toBase64Url(sig)}`;
   return { headers, body: wireBody };
 }
 
@@ -125,11 +125,12 @@ async function runSmoke(sdk, ax) {
   assert.equal(okResult.ok, true, `verifyResponse 失败: ${okResult.reason}`);
   assert.equal(okResult.plaintext, plain, '回程明文不一致');
 
-  // —— 回程负向：签名截断一位 → 定长校验前置 → 模糊失败（I7，不泄露细节）
-  const badHeaders = { ...resp.headers, 'x-wop-sign': resp.headers['x-wop-sign'].slice(0, -1) };
+  // —— 回程负向：签名截 4 字符（%4==0）→ 解码 383B ≠ 384B → 定长结构类明确拒绝
+  //（interop n06/n07 裁决：b64url 非法结构/定长不符为公开协议知识，非验签模糊）
+  const badHeaders = { ...resp.headers, 'x-wop-sign': resp.headers['x-wop-sign'].slice(0, -4) };
   const badResult = await client.verifyResponse(badHeaders, resp.body, PATH);
   assert.equal(badResult.ok, false);
-  assert.equal(badResult.reason, '签名验证失败');
+  assert.match(badResult.reason, /定长/);
 }
 
 module.exports = { runSmoke };

@@ -12,7 +12,7 @@ import { WopError } from '../src/error';
 import { fromBase64, toBase64Url, utf8Encode } from '../src/encode';
 import vectors from './fixtures/crypto-vectors.json';
 
-const PLAT_PRIV = vectors.keys.rsa4096!.privatePkcs8B64;
+const PLAT_PRIV = vectors.keys.rsa3072!.privatePkcs8B64; // 套件一致纪律：响应签名套件须与客户端配置一致（interop n11）
 
 describe('FetchTransport（原生 fetch 适配器）', () => {
   const originalFetch = globalThis.fetch;
@@ -239,7 +239,7 @@ describe('WopClient.send（Transport 编排）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
     await expect(client.send('POST', '/p', '{"a":1}')).rejects.toThrowError(/gatewayBaseUrl/);
   });
@@ -249,7 +249,7 @@ describe('WopClient.send（Transport 编排）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
       gatewayBaseUrl: 'https://gw.example.com',
     });
     const PATH = '/v1/order/create';
@@ -269,7 +269,7 @@ describe('WopClient.send（Transport 编排）', () => {
       headers,
     });
     const sig = await rsaSign(fromBase64(PLAT_PRIV), utf8Encode(canonical));
-    headers['x-wop-sign'] = `WOP-RSA4096-SHA256 v1/1800/${signed.join(';')}/${toBase64Url(sig)}`;
+    headers['x-wop-sign'] = `WOP-RSA3072-SHA256 v1/1800/${signed.join(';')}/${toBase64Url(sig)}`;
 
     const fetchMock = vi.fn(async () =>
       new Response(respBody, { status: 200, headers }),
@@ -293,7 +293,7 @@ describe('WopClient.send（Transport 编排）', () => {
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
-      platformPublicKey: vectors.keys.rsa4096!.publicSpkiB64,
+      platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
       gatewayBaseUrl: 'https://gw',
     });
     const mockTransport: Transport = {
