@@ -3,6 +3,8 @@
 WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密），
 使商户无需理解 canonicalRequest、套件推导与线上字节格式即可安全对接 WOP 网关。
 
+- 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
+- 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
 - **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥18 / 浏览器安全上下文）
 - **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
 - **行 / 分支 / 函数 / 语句覆盖率 100%**，黄金测试向量字节级锚定
