@@ -23,3 +23,41 @@ jobs:
       - run: npm run coverage
       - run: npm run build
       - run: npm run test:dist
+
+  types-floor:
+    name: TS ${{ matrix.ts }} type consumer
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ts: ['5.0.4', latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - name: 编译类型消费方工程（dist d.ts 对 TS 下界/最新的语法兼容）
+        run: npx -y -p typescript@${{ matrix.ts }} tsc -p tests/type-consumer
+
+  axios-matrix:
+    name: axios ${{ matrix.axios }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        axios: ['1.0.0', 'latest']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: 换装 peer 下界/最新（--no-save 不触 lock）
+        run: npm i axios@${{ matrix.axios }} --no-save
+      - name: axios 适配器测试
+        run: npx vitest run tests/transport.spec.ts
+      - run: npm run build
+      - name: dist 冒烟（AxiosTransport 经换装版本加载）
+        run: node tests/smoke.cjs && node tests/smoke.mjs

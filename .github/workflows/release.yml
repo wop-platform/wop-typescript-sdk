@@ -39,6 +39,7 @@ jobs:
         run: npm run coverage
 
       - run: npm run build
+      - run: npm run test:dist
 
       - name: 发布到 npm
         run: npm publish --access public

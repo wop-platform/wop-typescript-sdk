@@ -8,8 +8,9 @@
 |---|---|
 | Node.js | ≥ 18（CI 矩阵验证 18 / 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
 | 包管理器 | npm（使用 `package-lock.json` 锁定，CI 走 `npm ci`） |
-| TypeScript | ^5.9（`tsc --noEmit` 类型检查） |
+| TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证） |
 | 测试 | vitest ^3.2 + `@vitest/coverage-v8` |
+| peer 下界 | axios ≥1.0.0（CI `axios-matrix` job 以 1.0.0 + latest 换装验证 transport 测试与 dist 冒烟） |
 | 构建 | tsup ^8.5（ESM/CJS 双格式 + dts，target es2022） |
 | 密码学 | 全部走 WebCrypto（`globalThis.crypto`），**零运行时依赖**，不得引入 polyfill 或第三方 crypto 库 |
 
@@ -30,7 +31,8 @@ npm ci              # 干净安装（CI 同款）
 npm run typecheck   # tsc --noEmit，全仓类型检查
 npm run coverage    # vitest run --coverage，全量测试 + 覆盖率门禁
 npm run build       # tsup 产物构建（dist/ ESM+CJS+dts，index 与 axios 双入口）
-npm run test:dist   # 产物门禁：publint + attw 四解析模式 + dist 双格式冒烟（须先 build）
+npm run test:dist   # 产物门禁：publint + attw 四解析模式 + API 快照严格校验 + dist 双格式冒烟（须先 build）
+npm run api:snapshot # 重新生成 etc/*.api.md 快照（API 变更后必须运行并提交快照 diff）
 npm test            # 仅跑测试（vitest run，不出覆盖率）
 ```
 
@@ -44,6 +46,14 @@ npm test            # 仅跑测试（vitest run，不出覆盖率）
 - 新增协议行为必须：① 同步网关侧真源（向量由网关生成）；② 本仓更新为全量副本；③ 补全消费测试（`tests/vectors.spec.ts` 字节级断言）。
 - **负向量必须拒**：篡改（tamper）、跨族（如 RSA 套件喂 SM 密钥/向量）、错格式（digest 多空格、大写 hex、base64url 带填充、MGF1-SHA-1 陷阱等）都要有"必须拒绝"的断言，且失败类别符合 I7 模糊化要求（见下）。
 - SM2-SM3 段向量在 TS 仓体现为"暂未支持必须抛错"的负测试（Q7 裁决：首版仅 RSA 套件）。
+
+## API 快照纪律（0.x 起生效）
+
+`etc/wop-typescript-sdk.api.md` 与 `etc/wop-typescript-sdk-axios.api.md` 是 api-extractor 生成的公共 API 报告：
+
+- `npm run test:dist` 内含快照**严格校验**：API 变更后未同步快照即失败。更新快照用 `npm run api:snapshot`，快照 diff 必须出现在同一 PR 中——reviewer 以快照 diff 作为 API 变更清单。
+- `tests/type-consumer/index.ts` 是消费方哨兵：`noUnusedLocals` 强制覆盖全部导出符号，新增导出请同步登记，移除/改形既有导出会在此立即编译失败。
+- breaking change（0.x 阶段 = 主版本位不变下的导出面收缩/改形）必须在 PR 描述中显式声明，并评估商户升级成本。
 
 ## 编码规范
 
@@ -83,7 +93,7 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 ## PR 流程
 
 1. 基于 `main` 分支拉特性分支，PR 目标为 `main`。
-2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`，Node 18/20/22/24 四矩阵。
+2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`；Node 18/20/22/24 四矩阵 + `types-floor`（TS 5.0.4/latest）+ `axios-matrix`（axios 1.0.0/latest）。
 3. **向量合规全绿**：触碰 `tests/fixtures/crypto-vectors.json` 或协议路径的 PR，reviewer 必须复核向量来源（网关真源）与负向量覆盖。
 4. 至少一名 reviewer 通过后合并；spec 条款与实现冲突时**上报裁决**，不得以"既有实现"为由顺延 spec。
 
