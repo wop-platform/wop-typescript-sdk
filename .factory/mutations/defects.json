@@ -1,0 +1,132 @@
+{
+  "$schema": "https://awesome-rules.invalid/factory/mutations-v0.json",
+  "description": "S1 缺陷集（wop-typescript-sdk 本仓重铸）：篡改类（guard 门）+ 行为破坏类 B-1xx（tests 门 scripts/run_tests.sh --no-lock = vitest 全量 + BDD 商户旅程）。行为类 kill 证据 = 注入后 npm run test / npm run test:bdd 变红；负例（expect_block=false）验证门不全拒。证据留档 EVIDENCE-2026-08-29.md。",
+  "defects": [
+    {
+      "id": "G-01",
+      "description": "篡改治理宪法：MISSION.md 铁律降级为可选建议",
+      "target": "MISSION.md",
+      "find": "## 铁律",
+      "replace": "## 铁律（工厂可自行修订）",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "G-02",
+      "description": "篡改构建发布面：package.json 测试脚本挂 --passWithNoTests 放水空跑",
+      "target": "package.json",
+      "find": "\"test\": \"vitest run\",",
+      "replace": "\"test\": \"vitest run --passWithNoTests\",",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "G-03",
+      "description": "篡改验证门自身：guard.py 周界配置载入改向不存在文件致门 fail-closed（exit 2 应视为拦截）",
+      "target": ".factory/guard.py",
+      "find": "cfg_path = Path(__file__).resolve().parent / \"factory-local.json\"",
+      "replace": "cfg_path = Path(__file__).resolve().parent / \"factory-local-DISABLED.json\"",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "G-04",
+      "description": "篡改质检线：run_tests.sh 移除 pipefail 削弱真实退出码传播",
+      "target": "scripts/run_tests.sh",
+      "find": "set -euo pipefail",
+      "replace": "set -eu",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "G-05",
+      "description": "篡改安全敏感面：crypto.ts AES-256 密钥长度守卫由 32 字节放水到 31（guard 周界应先于行为面拦截）",
+      "target": "src/crypto.ts",
+      "find": "  if (key.length !== 32) {",
+      "replace": "  if (key.length !== 31) {",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "M-01",
+      "description": "周界清单单边漂移：MISSION 增加条目而 guard 副本未同步（self_check 应发现不一致）",
+      "target": "MISSION.md",
+      "find": "`tsconfig.json`、`vitest.config.ts`",
+      "replace": "`tsconfig.json`、`vitest.config.ts`、`factory-extra/`",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "M-02",
+      "description": "周界指向不存在路径：MISSION 安全敏感面条目改名为不存在的文件（self_check 一致性/存在性检查应拦截）",
+      "target": "MISSION.md",
+      "find": "`src/encode.ts`、`src/suite.ts`",
+      "replace": "`src/encode.ts`、`src/suite-renamed.ts`",
+      "gate": "guard",
+      "expect_block": true
+    },
+    {
+      "id": "B-01",
+      "description": "良性变更负例：docs/ 实施报告标题追加维护署名（docs/ 不在周界），guard 门必须放行（防门全拒）",
+      "target": "docs/wop-sdk-report-typescript.md",
+      "find": "# wop-typescript-sdk 实施报告",
+      "replace": "# wop-typescript-sdk 实施报告（工厂参与维护）",
+      "gate": "guard",
+      "expect_block": false
+    },
+    {
+      "id": "B-101",
+      "description": "行为破坏：digest 格式钉小写 hex 检查短路——大写 hex 误报为通用格式错误（mutation-killers『hex 须为小写』文案全等断言红）",
+      "target": "src/digest.ts",
+      "find": "    if (/^sha-256 [0-9A-F]+$/.test(value) || /^sm3 [0-9A-F]+$/.test(value)) {",
+      "replace": "    if (false && /^sha-256 [0-9A-F]+$/.test(value)) {",
+      "gate": "tests",
+      "expect_block": true
+    },
+    {
+      "id": "B-102",
+      "description": "行为破坏：base64url 非规范尾随位严格校验短路——RFC 4648 §3.5 拒收面失效（encode.spec 尾随位用例红）",
+      "target": "src/encode.ts",
+      "find": "    if (lastIndex & (rem === 2 ? 0xf : 0x3)) {",
+      "replace": "    if (false) {",
+      "gate": "tests",
+      "expect_block": true
+    },
+    {
+      "id": "B-103",
+      "description": "行为破坏：密钥材料 DER 最小长度守卫放水——短 DER 不再被拒（mutation-killers『密钥 DER 内容过短』文案全等断言红）",
+      "target": "src/keys.ts",
+      "find": "  if (der.length < 40) {",
+      "replace": "  if (der.length < 0) {",
+      "gate": "tests",
+      "expect_block": true
+    },
+    {
+      "id": "B-104",
+      "description": "行为破坏：canonical 签名基 Java-URLEncoder 补编码失效——!'()~ 不再转 %XX，与网关逐字节对齐破裂（vectors/interop 红字节数）",
+      "target": "src/canonical.ts",
+      "find": "    (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase(),",
+      "replace": "    (c) => c,",
+      "gate": "tests",
+      "expect_block": true
+    },
+    {
+      "id": "B-105",
+      "description": "行为破坏：DEK 载荷三段结构校验失效——缺段/多段载荷不再被结构化拒绝（mutation-killers『应为 alg$key$iv 三段』文案全等断言红）",
+      "target": "src/envelope.ts",
+      "find": "  if (parts.length !== 3 || parts[0] === '' || parts[1] === '' || parts[2] === '') {",
+      "replace": "  if (false) {",
+      "gate": "tests",
+      "expect_block": true
+    },
+    {
+      "id": "B-106",
+      "description": "良性变更负例：digest.ts 文件头注释措辞调整（行为等价，175 用例 + 15 BDD 场景仍绿），tests 门必须放行（防门全拒）",
+      "target": "src/digest.ts",
+      "find": " * - 无 body（GET）→ header 缺席；有 body 必传必入 signedHeaders（I1，由 client 保证）",
+      "replace": " * - 无 body（GET）→ header 缺席；有 body 必传必入 signedHeaders（I1，由 client 层保证）",
+      "gate": "tests",
+      "expect_block": false
+    }
+  ]
+}
