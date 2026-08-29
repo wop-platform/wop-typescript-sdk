@@ -4,7 +4,8 @@
   "apiReport": {
     "enabled": true,
     "reportFolder": "<projectFolder>/etc/",
-    "reportTempFolder": "<projectFolder>/etc/temp/"
+    "reportTempFolder": "<projectFolder>/etc/temp/",
+    "reportFileName": "wop-typescript-sdk.api.md"
   },
 
   "docModel": {
