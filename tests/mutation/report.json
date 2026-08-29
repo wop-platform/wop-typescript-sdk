@@ -1,0 +1,177 @@
+{
+  "total": 256,
+  "killed": 244,
+  "score": 0.953125,
+  "byOp": {
+    "arith-plus": {
+      "total": 8,
+      "killed": 8
+    },
+    "numeric": {
+      "total": 37,
+      "killed": 36
+    },
+    "stmt-del": {
+      "total": 63,
+      "killed": 61
+    },
+    "cond-lt": {
+      "total": 8,
+      "killed": 4
+    },
+    "cond-gt": {
+      "total": 2,
+      "killed": 2
+    },
+    "logic-and": {
+      "total": 4,
+      "killed": 4
+    },
+    "eq": {
+      "total": 26,
+      "killed": 26
+    },
+    "neq": {
+      "total": 23,
+      "killed": 23
+    },
+    "bool": {
+      "total": 4,
+      "killed": 3
+    },
+    "not-drop": {
+      "total": 16,
+      "killed": 16
+    },
+    "string": {
+      "total": 61,
+      "killed": 57
+    },
+    "shift": {
+      "total": 4,
+      "killed": 4
+    }
+  },
+  "survivors": [
+    {
+      "id": "client.ts:347",
+      "op": "cond-lt",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
+      "start": 11928,
+      "end": 11929,
+      "replacement": "<=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "client.ts:322",
+      "op": "bool",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
+      "start": 11013,
+      "end": 11017,
+      "replacement": "false",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "client.ts:262",
+      "op": "string",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
+      "start": 8635,
+      "end": 8636,
+      "replacement": "@mut'",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "client.ts:368",
+      "op": "string",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
+      "start": 12801,
+      "end": 12802,
+      "replacement": "@mut'",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "crypto.ts:146",
+      "op": "cond-lt",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "start": 4355,
+      "end": 4356,
+      "replacement": "<=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "crypto.ts:146",
+      "op": "numeric",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "start": 4357,
+      "end": 4359,
+      "replacement": "17",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "crypto.ts:28",
+      "op": "stmt-del",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "start": 845,
+      "end": 869,
+      "replacement": "",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "crypto.ts:146",
+      "op": "stmt-del",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "start": 4334,
+      "end": 4417,
+      "replacement": "",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:72",
+      "op": "cond-lt",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
+      "start": 2257,
+      "end": 2258,
+      "replacement": "<=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:113",
+      "op": "cond-lt",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
+      "start": 3390,
+      "end": 3391,
+      "replacement": "<=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:12",
+      "op": "string",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
+      "start": 352,
+      "end": 353,
+      "replacement": "@mut'",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:13",
+      "op": "string",
+      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
+      "start": 442,
+      "end": 443,
+      "replacement": "@mut'",
+      "killed": false,
+      "detail": "exit=0"
+    }
+  ]
+}
