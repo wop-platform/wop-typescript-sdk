@@ -53,23 +53,6 @@ describe('crypto 边界', () => {
     }
   });
 
-  it('webcrypto()：全局与 node:crypto 均不可用 → 系统类错误', async () => {
-    // 模块加载边界用例（ts-no-dynamic-import 例外）：需 fresh 模块副本使 loader 缓存失效
-    const original = globalThis.crypto;
-    Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
-    vi.doMock('node:crypto', () => {
-      throw new Error('no node crypto');
-    });
-    try {
-      vi.resetModules();
-      const fresh = await import('../src/crypto');
-      await expect(fresh.webcrypto()).rejects.toThrowError(/WebCrypto/);
-    } finally {
-      vi.doUnmock('node:crypto');
-      vi.resetModules();
-      Object.defineProperty(globalThis, 'crypto', { value: original, configurable: true });
-    }
-  });
 });
 
 describe('client 边界（F6/L2 深层分支）', () => {

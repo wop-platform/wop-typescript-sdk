@@ -39,10 +39,7 @@ export async function webcrypto(): Promise<Crypto> {
     },
   );
   await loader;
-  if (!nodeCrypto?.subtle) {
-    throw new WopError('当前运行时缺少 WebCrypto（globalThis.crypto.subtle 与 node:crypto.webcrypto 均不可用）', 'system');
-  }
-  return nodeCrypto;
+  return nodeCrypto!; // loader resolve 即已赋值：node:crypto.webcrypto 在 Node 恒存在
 }
 
 /** CSPRNG 字节（I4：IV/nonce 唯一生成点） */

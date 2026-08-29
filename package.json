@@ -1,9 +1,19 @@
 {
-  "name": "wop-typescript-sdk",
+  "name": "@wanlianyida/wop-typescript-sdk",
   "version": "0.1.0",
   "description": "WOP 商户侧官方 TypeScript SDK：协议核心（签名/摘要/L2 数字信封/验签解密）+ 可插拔 HTTP 适配层",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wop-platform/wop-typescript-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wop-platform/wop-typescript-sdk/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
