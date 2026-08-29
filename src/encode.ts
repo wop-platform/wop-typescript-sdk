@@ -18,14 +18,23 @@ export function toBase64Url(bytes: Uint8Array): string {
 }
 
 /**
- * base64url 无填充**严格**解码：带 `=`、非法字符、不可能长度（%4==1）一律拒绝。
+ * base64url 无填充**严格**解码：带 `=`、非法字符、不可能长度（%4==1）、非规范尾随位一律拒绝。
  */
 export function fromBase64Url(s: string): Bytes {
   if (!B64URL_RE.test(s)) {
     throw new WopError('base64url 解码失败：输入含非法字符或填充符 "="', 'parse');
   }
-  if (s.length % 4 === 1) {
+  const rem = s.length % 4;
+  if (rem === 1) {
     throw new WopError(`base64url 解码失败：长度非法（${s.length} % 4 == 1）`, 'parse');
+  }
+  // 非规范尾随位显式校验（RFC 4648 §3.5，语义锚 = Go base64.RawURLEncoding.Strict()）：
+  // %4==2（8 数据位）→ 尾字符低 4 位须零；%4==3（16 数据位）→ 尾字符低 2 位须零
+  if (rem === 2 || rem === 3) {
+    const lastIndex = B64U_ALPHABET.indexOf(s[s.length - 1]!)!;
+    if (lastIndex & (rem === 2 ? 0xf : 0x3)) {
+      throw new WopError('base64url 解码失败：非规范尾随位', 'parse');
+    }
   }
   return decodeWith(s, B64U_ALPHABET);
 }
