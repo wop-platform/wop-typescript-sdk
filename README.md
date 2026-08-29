@@ -27,11 +27,11 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 ## 快速开始
 
 ```bash
-npm install wop-typescript-sdk
+npm install @wanlianyida/wop-typescript-sdk
 ```
 
 ```ts
-import { WopClient } from 'wop-typescript-sdk'; // 或 require('wop-typescript-sdk')
+import { WopClient } from '@wanlianyida/wop-typescript-sdk'; // 或 require('@wanlianyida/wop-typescript-sdk')
 
 const client = new WopClient({
   appKey: 'your-app-key',
@@ -76,7 +76,7 @@ const draftL2 = await client.buildRequest('POST', '/v1/order/create', body, { le
 const draftGet = await client.buildRequest('GET', '/v1/order/query?status=PAID');
 
 // 使用 axios 传输（peer 可选）
-import { AxiosTransport } from 'wop-typescript-sdk/axios';
+import { AxiosTransport } from '@wanlianyida/wop-typescript-sdk/axios';
 client.setTransport(new AxiosTransport());
 ```
 

@@ -4,7 +4,7 @@ import { WopError } from '../error';
 import type { Transport, TransportRequest, TransportResponse } from './types';
 
 /**
- * axios peer 适配器（独立入口 `wop-typescript-sdk/axios`，不污染核心依赖面）。
+ * axios peer 适配器（独立入口 `@wanlianyida/wop-typescript-sdk/axios`，不污染核心依赖面）。
  * 非 2xx 默认抛错的 axios 行为在此降级为结构化返回，与 FetchTransport 语义对齐。
  */
 export class AxiosTransport implements Transport {

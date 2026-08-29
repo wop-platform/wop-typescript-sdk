@@ -1,7 +1,7 @@
 /**
  * wop-typescript-sdk 公共导出。
  *
- * axios peer 适配器经独立入口 `wop-typescript-sdk/axios` 导入（不污染核心依赖面，
+ * axios peer 适配器经独立入口 `@wanlianyida/wop-typescript-sdk/axios` 导入（不污染核心依赖面，
  * 且避免 CJS 主入口 eager require 触发可选 peer 加载）。
  */
 
