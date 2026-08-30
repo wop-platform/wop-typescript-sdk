@@ -64,7 +64,7 @@ vi.mock('../src/crypto', async (importOriginal) => {
     return Uint8Array.from(bin, (c) => c.charCodeAt(0));
   };
 
-  async function mgf1Sha256(seed: Uint8Array, len: number): Promise<Uint8Array> {
+  const mgf1Sha256 = async (seed: Uint8Array, len: number): Promise<Uint8Array> => {
     const out = new Uint8Array(len);
     let pos = 0;
     for (let counter = 0; pos < len; counter++) {
@@ -78,7 +78,7 @@ vi.mock('../src/crypto', async (importOriginal) => {
     return out;
   }
 
-  function powMod(x: bigint, e: bigint, n: bigint): bigint {
+  const powMod = (x: bigint, e: bigint, n: bigint): bigint => {
     let result = 1n;
     let base = x % n;
     let exp = e;
@@ -94,7 +94,7 @@ vi.mock('../src/crypto', async (importOriginal) => {
    *  WebCrypto 无法注入 OAEP seed；此标准等价实现（EME-OAEP + BigInt RSAEP）
    *  由两条路径交叉验证：roundtrip 通过真实 WebCrypto oaepUnwrap，且字节级
    *  对拍 Go rsa.EncryptOAEP 生成的真源 fixture（build:L2 全头比对）。 */
-  async function oaepWrapFromStream(pubSpki: Uint8Array, plaintext: Uint8Array): Promise<Uint8Array> {
+  const oaepWrapFromStream = async (pubSpki: Uint8Array, plaintext: Uint8Array): Promise<Uint8Array> => {
     const key = await subtle.importKey(
       'spki',
       pubSpki as unknown as BufferSource,

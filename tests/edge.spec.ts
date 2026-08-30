@@ -56,7 +56,7 @@ describe('crypto 边界', () => {
 });
 
 describe('client 边界（F6/L2 深层分支）', () => {
-  function makeClient(): WopClient {
+  const makeClient = (): WopClient => {
     return new WopClient({
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
@@ -152,7 +152,7 @@ describe('client 边界（F6/L2 深层分支）', () => {
 
 
 describe('client 深层分支补测', () => {
-  function makeClient(): WopClient {
+  const makeClient = (): WopClient => {
     return new WopClient({
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
