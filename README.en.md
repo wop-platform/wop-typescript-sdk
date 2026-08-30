@@ -1,4 +1,5 @@
 # wop-typescript-sdk
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-typescript-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 Official merchant-side TypeScript SDK for the WOP gateway: encapsulates the protocol core
 (structured signing, body digest, L2 digital envelope, signature verification & decryption)
