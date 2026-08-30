@@ -486,8 +486,11 @@ class TestCodeupEndpointFallback:
         monkeypatch.setenv("CODEUP_REPO_ID", "42")
         with pytest.raises(hosting.HostingError) as e:
             ad._req("GET", "/oapi/v1/codeup/organizations/org/repositories/42")
-        # 两次都失败才报错；且报错信息指向重试后的端点
-        assert "openapi-rdc.aliyuncs.com" in str(e.value)
+        # （code-scanning py/incomplete-url-substring-sanitization：结构化
+        #   解析出主机名再相等断言，不做 URL 子串匹配）
+        msg = str(e.value)
+        host = msg.split("（", 1)[1].split("）", 1)[0]
+        assert host == "openapi-rdc.aliyuncs.com"
 
 
 class TestCli:

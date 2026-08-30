@@ -91,6 +91,17 @@ describe('标准 base64（密钥材料）', () => {
     expect(fromBase64(s)).toEqual(bytes);
   });
 
+  it('fromBase64：剥除多 `=` 填充（code-scanning ReDoS 回归锚）', () => {
+    expect(Array.from(fromBase64('YWJj'))).toEqual([0x61, 0x62, 0x63]);
+    expect(Array.from(fromBase64('YWJj=='))).toEqual([0x61, 0x62, 0x63]);
+  });
+
+  it('fromBase64：尾随换行仍拒绝（与 /=+$/ 的 $ 语义一致，不吞 \\n）', () => {
+    // 旧正则 /=+$/ 的 $ 亦匹配末尾单个 \n 之前：剥 '==' 后留 '\n' → 非法字符拒绝
+    expect(() => fromBase64('YWJj==\n')).toThrowError(/base64/);
+    expect(() => fromBase64('YWJj\n')).toThrowError(/base64/);
+  });
+
   it('解析向量 RSA SPKI 密钥', () => {
     const spki = fromBase64(vectors.keys.rsa3072!.publicSpkiB64);
     expect(spki.length).toBeGreaterThan(300);

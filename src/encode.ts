@@ -46,7 +46,7 @@ export function toBase64(bytes: Uint8Array): string {
 
 /** 标准 base64 解码（容忍 padding） */
 export function fromBase64(s: string): Bytes {
-  const trimmed = s.replace(/=+$/, '');
+  const trimmed = trimBase64Padding(s);
   if (!/^[A-Za-z0-9+/]*$/.test(trimmed)) {
     throw new WopError('base64 解码失败：输入含非法字符', 'parse');
   }
@@ -54,6 +54,24 @@ export function fromBase64(s: string): Bytes {
     throw new WopError(`base64 解码失败：长度非法（${trimmed.length} % 4 == 1）`, 'parse');
   }
   return decodeWith(trimmed, STD_ALPHABET);
+}
+
+/**
+ * 去掉标准 base64 末尾 `=` 填充，语义与 `/=+$/` 完全一致：JS 正则 `$`
+ * 亦匹配末尾单个 `\n` 之前，故 `=` 剥除不吞换行。
+ * （code-scanning js/polynomial-redos：改线性扫描，无正则回溯。）
+ */
+function trimBase64Padding(s: string): string {
+  let end = s.length;
+  let trailingNl = 0;
+  if (end > 0 && s[end - 1] === '\n') {
+    trailingNl = 1;
+    end -= 1;
+  }
+  while (end > 0 && s[end - 1] === '=') {
+    end -= 1;
+  }
+  return trailingNl ? s.slice(0, end) + '\n' : s.slice(0, end);
 }
 
 /** 小写 hex 编码 */
