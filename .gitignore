@@ -18,4 +18,3 @@ __pycache__
 .factory/var/
 .factory/regression/**/out/
 .factory/feedback-log.jsonl
-.factory/upstream-lock.json
