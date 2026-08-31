@@ -1,4 +1,32 @@
-# Sourcery 扫描配置：排除构建产物（jacoco/coverage/dist 报告与 bundle 被逐字符扫描，非源码噪音）
+# Sourcery 规则保留清单（显式化"评论清零"的边界）。
+# 2026-08-31 评审确认的保留项：
+# - no-loop-in-tests / no-conditionals-in-tests：测试内循环/条件断言是惯用法
+# - possible-incorrect-bitwise-operator（ts）：src/encode.ts:35 是 RFC 4648 §3.5 尾随位校验
+#   的有意位掩码（低 4/2 位须零），非逻辑错误
+# 其余规则全开；新增触发点由 CI gate（sourcery-review-gate.yml）拦截。
+version: '1'
+
 ignore:
-  - coverage/
-  - dist/
+- .git
+- env
+- .env
+- .tox
+- node_modules
+- vendor
+- venv
+- .venv
+- dist
+- coverage
+- StrykerOutput
+
+rule_settings:
+  enable:
+  - default
+  disable:
+  - no-loop-in-tests
+  - no-conditionals-in-tests
+  - possible-incorrect-bitwise-operator
+  rule_types:
+  - refactoring
+  - suggestion
+  - comment
