@@ -101,8 +101,8 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 
 发布由 tag 触发，流程定义在 [.github/workflows/release.yml](.github/workflows/release.yml)：
 
-1. 版本号变更（`package.json` 的 `version`）合入 `main`，提交信息如 `chore(release): v0.1.1`。
-2. 打 tag 并推送：`git tag v0.1.1 && git push origin v0.1.1`。
+1. 版本号变更（`package.json` 的 `version`）经 PR 合入 `main`，提交信息如 `chore(release): v<version>`（占位符替换为实际版本，如 `v0.1.2`）。
+2. 打 tag 并推送：`git tag v<version> && git push origin v<version>`（tag 须与 `package.json` 版本一致，否则发布标识错位）。
 3. release workflow 自动执行：checkout → Node 22 → `npm ci` → `npm run typecheck` → `npm run coverage` → `npm run build` → `npm publish --access public`（scoped 包必须 public）。
 4. npm 凭证走 GitHub Secret `NODE_AUTH_TOKEN`（`registry.npmjs.org`），**任何凭证不得出现在仓库明文**；发布步骤位于全部测试与构建之后，失败不会留下半发布状态。
 
