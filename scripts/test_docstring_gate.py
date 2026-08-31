@@ -165,9 +165,10 @@ def test_parse_method_private_exempt():
 
 def test_parse_method_accessor_branches():
     # word 为 get/set:其后紧跟 name(...) 才构成存取器
-    assert gate.parse_method('get url(): string { return "u"; }') is None
+    # 实现契约：get/set 存取器计入度量（docstring_gate.parse_method 返回 ('url','accessor'））
+    assert gate.parse_method('get url(): string { return "u"; }') == ('url', 'accessor')
     assert gate.parse_method('get val') is None
-    assert gate.parse_method('get (x)') == ('get', 'accessor')
+    assert gate.parse_method('get (x)') is None  # 缺存取器名（无效语法），非误识别
 
 
 def test_parse_method_reserved_and_non_method():
@@ -272,6 +273,7 @@ def test_analyze_exported_class_members():
     assert [(s.name, s.kind, s.decl, s.line) for s in symbols] == [
         ('Client', 'external', 'class', 2),
         ('Client.send', 'external', 'method', 3),
+        ('Client.url', 'external', 'accessor', 4),  # 存取器计入度量（getter/setter 不豁免契约）
         ('Client.helper', 'external', 'method', 8),
     ]
 

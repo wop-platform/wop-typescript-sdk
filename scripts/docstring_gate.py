@@ -262,8 +262,9 @@ def parse_method(line: str):
     if private:
         return None
     if word in ('get', 'set'):  # 存取器:get name(...) → name
+        s = s[m.end():]  # 消费 get/set 修饰词（此前缺失：name 前缀词使匹配恒败/误判）
         m2 = re.match(r'([A-Za-z_$][\w$]*)\s*\(', s)
-        return (m2[1], 'accessor') if m2 else None
+        return (m2[1], 'accessor') if m2 and m2[1] else None
     if word in METHOD_RESERVED:
         return None
     if re.match(r'[A-Za-z_$][\w$]*\s*(?:<[^>(]*/?>)?\s*\(', s):

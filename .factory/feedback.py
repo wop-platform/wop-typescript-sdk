@@ -323,10 +323,10 @@ def _patch_id(sha):
     return out.split()[0] if out else None
 
 def _gather_commits():
-    """git log 提交链；_files_by_sha 沿用既有调用序（结果未消费，保持原行为）。"""
+    """git log 提交链；各提交附加触碰的 .factory 文件集（feedable_assets 消费）。"""
     commits = _git_log_commits()
-    fbs = _files_by_sha()
-    return commits
+    files_by_sha = _files_by_sha()
+    return [dict(c, files=files_by_sha.get(c["sha"], ())) for c in commits]
 
 
 def _build_pending(commits, ledger_path):
