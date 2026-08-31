@@ -34,6 +34,7 @@ export function canonicalHeaders(headers: Record<string, string>): string {
     .map((k) => `${javaUrlEncode(k)}:${javaUrlEncode(trimall(lowered[k]))}`)
     .join('\n');
 }
+/** canonicalRequest 五要素入参:authString、METHOD、path、queryString、headers */
 export interface CanonicalRequestInput {
   authString: string;
   method: string;

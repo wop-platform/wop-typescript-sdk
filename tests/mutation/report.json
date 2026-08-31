@@ -1,11 +1,11 @@
 {
-  "total": 256,
-  "killed": 244,
-  "score": 0.953125,
+  "total": 262,
+  "killed": 247,
+  "score": 0.9427480916030534,
   "byOp": {
     "arith-plus": {
-      "total": 8,
-      "killed": 8
+      "total": 9,
+      "killed": 9
     },
     "numeric": {
       "total": 37,
@@ -13,23 +13,23 @@
     },
     "stmt-del": {
       "total": 63,
-      "killed": 61
+      "killed": 60
     },
     "cond-lt": {
       "total": 8,
       "killed": 4
     },
     "cond-gt": {
-      "total": 2,
+      "total": 4,
       "killed": 2
     },
     "logic-and": {
-      "total": 4,
-      "killed": 4
+      "total": 6,
+      "killed": 6
     },
     "eq": {
-      "total": 26,
-      "killed": 26
+      "total": 27,
+      "killed": 27
     },
     "neq": {
       "total": 23,
@@ -54,41 +54,41 @@
   },
   "survivors": [
     {
-      "id": "client.ts:347",
+      "id": "client.ts:353",
       "op": "cond-lt",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
-      "start": 11928,
-      "end": 11929,
+      "file": "src/client.ts",
+      "start": 12304,
+      "end": 12305,
       "replacement": "<=",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "client.ts:322",
+      "id": "client.ts:328",
       "op": "bool",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
-      "start": 11013,
-      "end": 11017,
+      "file": "src/client.ts",
+      "start": 11389,
+      "end": 11393,
       "replacement": "false",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "client.ts:262",
+      "id": "client.ts:268",
       "op": "string",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
-      "start": 8635,
-      "end": 8636,
+      "file": "src/client.ts",
+      "start": 9011,
+      "end": 9012,
       "replacement": "@mut'",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "client.ts:368",
+      "id": "client.ts:374",
       "op": "string",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/client.ts",
-      "start": 12801,
-      "end": 12802,
+      "file": "src/client.ts",
+      "start": 13177,
+      "end": 13178,
       "replacement": "@mut'",
       "killed": false,
       "detail": "exit=0"
@@ -96,7 +96,7 @@
     {
       "id": "crypto.ts:146",
       "op": "cond-lt",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "file": "src/crypto.ts",
       "start": 4355,
       "end": 4356,
       "replacement": "<=",
@@ -106,7 +106,7 @@
     {
       "id": "crypto.ts:146",
       "op": "numeric",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "file": "src/crypto.ts",
       "start": 4357,
       "end": 4359,
       "replacement": "17",
@@ -116,7 +116,7 @@
     {
       "id": "crypto.ts:28",
       "op": "stmt-del",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "file": "src/crypto.ts",
       "start": 845,
       "end": 869,
       "replacement": "",
@@ -126,7 +126,7 @@
     {
       "id": "crypto.ts:146",
       "op": "stmt-del",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/crypto.ts",
+      "file": "src/crypto.ts",
       "start": 4334,
       "end": 4417,
       "replacement": "",
@@ -134,42 +134,72 @@
       "detail": "exit=0"
     },
     {
-      "id": "encode.ts:72",
+      "id": "encode.ts:93",
       "op": "cond-lt",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
-      "start": 2257,
-      "end": 2258,
+      "file": "src/encode.ts",
+      "start": 2805,
+      "end": 2806,
       "replacement": "<=",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "encode.ts:113",
+      "id": "encode.ts:138",
       "op": "cond-lt",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
-      "start": 3390,
-      "end": 3391,
+      "file": "src/encode.ts",
+      "start": 4050,
+      "end": 4051,
       "replacement": "<=",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "encode.ts:12",
+      "id": "encode.ts:70",
+      "op": "cond-gt",
+      "file": "src/encode.ts",
+      "start": 2178,
+      "end": 2179,
+      "replacement": ">=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:74",
+      "op": "cond-gt",
+      "file": "src/encode.ts",
+      "start": 2259,
+      "end": 2260,
+      "replacement": ">=",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:14",
       "op": "string",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
-      "start": 352,
-      "end": 353,
+      "file": "src/encode.ts",
+      "start": 423,
+      "end": 424,
       "replacement": "@mut'",
       "killed": false,
       "detail": "exit=0"
     },
     {
-      "id": "encode.ts:13",
+      "id": "encode.ts:16",
       "op": "string",
-      "file": "/Users/dreambt/sources/open-platform/wop-typescript-sdk/src/encode.ts",
-      "start": 442,
-      "end": 443,
+      "file": "src/encode.ts",
+      "start": 548,
+      "end": 549,
       "replacement": "@mut'",
+      "killed": false,
+      "detail": "exit=0"
+    },
+    {
+      "id": "encode.ts:70",
+      "op": "stmt-del",
+      "file": "src/encode.ts",
+      "start": 2170,
+      "end": 2245,
+      "replacement": "",
       "killed": false,
       "detail": "exit=0"
     }

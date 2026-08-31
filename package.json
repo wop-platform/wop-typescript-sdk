@@ -61,7 +61,7 @@
     "api:snapshot": "api-extractor run --local && api-extractor run --local -c api-extractor.axios.json",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "test:bdd": "NODE_OPTIONS=\"--import tsx\" cucumber-js tests/features --import \"tests/features/steps/**/*.ts\" --format summary",
+    "test:bdd": "node --import tsx node_modules/@cucumber/cucumber/bin/cucumber.js tests/features --import \"tests/features/steps/**/*.ts\" --format summary",
     "test:mutation": "node tests/mutation/run-mutations.mjs"
   },
   "keywords": [

@@ -13,8 +13,6 @@ export class AxiosTransport implements Transport {
     constructor(instance?: AxiosInstance);
     // Warning: (ae-forgotten-export) The symbol "TransportRequest" needs to be exported by the entry point axios.d.ts
     // Warning: (ae-forgotten-export) The symbol "TransportResponse" needs to be exported by the entry point axios.d.ts
-    //
-    // (undocumented)
     send(request: TransportRequest): Promise<TransportResponse>;
 }
 

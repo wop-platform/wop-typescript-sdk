@@ -20,6 +20,7 @@ export async function computeDigestHeader(body: Uint8Array | string): Promise<st
   return `sha-256 ${toHex(digest)}`;
 }
 
+/** verifyDigestHeader 校验通过的结构化结果:算法标记 + 小写 hex */
 export interface ParsedDigestHeader {
   alg: string;
   hex: string;

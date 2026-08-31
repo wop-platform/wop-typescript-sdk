@@ -1,0 +1,4 @@
+# 字节级哨兵纪律（spec D2）：fixture 是真源的字节副本，sha256 哨兵与字节级比对
+# 要求任何平台检出恒为 LF——Windows 默认 autocrlf 会把文本文件检为 CRLF，
+# 使 tests/interop.spec.ts 的 sha256 哨兵必然失败。向量/fixture 全目录钉死 eol=lf。
+tests/fixtures/** text eol=lf

@@ -24,6 +24,7 @@ export interface AlgorithmSuite {
   readonly expectedDekAlg: 'AES-256-GCM';
 }
 
+/** WOP-RSA3072-SHA256 套件单例(冻结,§4.4 一次请求的算法上下文) */
 const RSA3072_SUITE: AlgorithmSuite = Object.freeze({
   securityReq: 'WOP-RSA3072-SHA256',
   keyAlgorithm: 'RSA',
@@ -37,6 +38,7 @@ const RSA3072_SUITE: AlgorithmSuite = Object.freeze({
   expectedDekAlg: 'AES-256-GCM',
 });
 
+/** WOP-RSA4096-SHA256 套件单例(冻结) */
 const RSA4096_SUITE: AlgorithmSuite = Object.freeze({
   securityReq: 'WOP-RSA4096-SHA256',
   keyAlgorithm: 'RSA',
@@ -50,10 +52,12 @@ const RSA4096_SUITE: AlgorithmSuite = Object.freeze({
   expectedDekAlg: 'AES-256-GCM',
 });
 
-/** 密钥/摘要算法 → 密码族：支持列表与跨族校验（I5）的单一事实源 */
+/** 密钥算法 → 密码族（I5 跨族校验与支持列表的单一事实源，与 DIGEST_ALG_FAMILY 成对维护） */
 const KEY_ALG_FAMILY: Record<string, 'RSA' | 'SM2'> = { RSA3072: 'RSA', RSA4096: 'RSA', SM2: 'SM2' };
+/** 摘要算法 → 密码族(与 KEY_ALG_FAMILY 同源维护,I5 跨族校验) */
 const DIGEST_ALG_FAMILY: Record<string, 'RSA' | 'SM2'> = { SHA256: 'RSA', SM3: 'SM2' };
 
+/** 已解析套件缓存:securityReq → 套件单例,免重复解析 */
 const SUITE_CACHE: Record<string, AlgorithmSuite> = {
   'WOP-RSA3072-SHA256': RSA3072_SUITE,
   'WOP-RSA4096-SHA256': RSA4096_SUITE,

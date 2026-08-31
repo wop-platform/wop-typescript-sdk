@@ -7,7 +7,7 @@
 | 项 | 要求 |
 |---|---|
 | Node.js | ≥ 18（CI 矩阵验证 18 / 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
-| 包管理器 | npm（使用 `package-lock.json` 锁定，CI 走 `npm ci`） |
+| 操作系统 | Linux / macOS / Windows（CI `test` job 三 OS × 四 Node 全矩阵；测试脚本已跨平台化：无 POSIX-only shell 语法、路径经 `node:path`/`fileURLToPath`、子进程以 `process.execPath` 直跑 JS 入口） |
 | TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证）；`typecheck-latest` job 以 typescript@latest 跑主仓 typecheck，作 devDeps 升级前的**前瞻雷达**（当前 latest = 7.0，主仓已验证兼容） |
 | 测试 | vitest ^3.2 + `@vitest/coverage-v8` |
 | peer 下界 | axios ≥1.0.0（CI `axios-matrix` job 以 1.0.0 + latest 换装验证 transport 测试与 dist 冒烟） |
@@ -93,7 +93,7 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 ## PR 流程
 
 1. 基于 `main` 分支拉特性分支，PR 目标为 `main`。
-2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`；Node 18/20/22/24 四矩阵 + `types-floor`（TS 5.0.4/latest）+ `axios-matrix`（axios 1.0.0/latest）。
+2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`；Node 18/20/22/24 × Linux/macOS/Windows 四矩阵 + `types-floor`（TS 5.0.4/latest）+ `axios-matrix`（axios 1.0.0/latest）。
 3. **向量合规全绿**：触碰 `tests/fixtures/crypto-vectors.json` 或协议路径的 PR，reviewer 必须复核向量来源（网关真源）与负向量覆盖。
 4. 至少一名 reviewer 通过后合并；spec 条款与实现冲突时**上报裁决**，不得以"既有实现"为由顺延 spec。
 

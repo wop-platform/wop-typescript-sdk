@@ -8,8 +8,11 @@ import { WopError } from './error';
 /** 明确以 ArrayBuffer 为底的字节类型（WebCrypto BufferSource 兼容） */
 export type Bytes = Uint8Array<ArrayBuffer>;
 
+/** base64url 字母表预检(无填充,故不含 =) */
 const B64URL_RE = /^[A-Za-z0-9_-]*$/;
+/** 标准 base64 字母表(密钥材料,含 padding) */
 const STD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+/** base64url 字母表(线上编码,+/ → -_) */
 const B64U_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
 /** base64url 无填充编码 */
@@ -93,13 +96,17 @@ export function fromHex(s: string): Bytes {
   return out;
 }
 
+/** 进程级复用的 UTF-8 编码器 */
 const encoder = new TextEncoder();
+/** 进程级复用的 UTF-8 解码器 */
 const decoder = new TextDecoder();
 
+/** UTF-8 编码(string → Bytes) */
 export function utf8Encode(s: string): Bytes {
   return encoder.encode(s) as Bytes;
 }
 
+/** UTF-8 解码(Bytes → string) */
 export function utf8Decode(bytes: Uint8Array): string {
   return decoder.decode(bytes);
 }

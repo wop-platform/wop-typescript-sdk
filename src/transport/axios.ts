@@ -15,6 +15,7 @@ export class AxiosTransport implements Transport {
     this.instance = instance ?? axios;
   }
 
+  /** 发送请求并结构化返回;非 2xx 与发送失败映射规则见类注释 */
   async send(request: TransportRequest): Promise<TransportResponse> {
     try {
       const resp = await this.instance.request({
@@ -41,6 +42,7 @@ export class AxiosTransport implements Transport {
   }
 }
 
+/** axios 头对象(可能数组值)→ 小写名扁平键值表,与 fetch 适配器对齐 */
 function flattenHeaders(raw: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   if (!raw || typeof raw !== 'object') return out;
@@ -49,7 +51,7 @@ function flattenHeaders(raw: unknown): Record<string, string> {
   }
   return out;
 }
-
+/** 响应体归一为文本:非字符串(对象类)JSON 序列化,空值归空串 */
 function asText(data: unknown): string {
   if (typeof data === 'string') return data;
   if (data === undefined || data === null) return '';

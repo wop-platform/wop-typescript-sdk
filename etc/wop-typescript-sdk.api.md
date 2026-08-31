@@ -64,7 +64,6 @@ export interface DekPayload {
 
 // @public
 export class FetchTransport implements Transport {
-    // (undocumented)
     send(request: TransportRequest): Promise<TransportResponse>;
 }
 
@@ -98,7 +97,7 @@ export function parseSecurityReq(securityReq: string): AlgorithmSuite;
 // @public
 export function randomBytes(n: number): Promise<Bytes>;
 
-// @public (undocumented)
+// @public
 export interface RequestDraft {
     headers: Record<string, string>;
     // (undocumented)
@@ -108,7 +107,7 @@ export interface RequestDraft {
     wireBody: string;
 }
 
-// @public (undocumented)
+// @public
 export interface RequestOptions {
     dek?: Uint8Array;
     expiredSeconds?: number;
@@ -124,7 +123,7 @@ export function rsaSign(privPkcs8: Uint8Array, data: Uint8Array): Promise<Bytes>
 // @public
 export function rsaVerify(pubSpki: Uint8Array, signature: Uint8Array, data: Uint8Array): Promise<boolean>;
 
-// @public (undocumented)
+// @public
 export interface SendResult extends VerifyResult {
     // (undocumented)
     body: string;
@@ -146,7 +145,7 @@ export function toBase64Url(bytes: Uint8Array): string;
 // @public
 export function toHex(bytes: Uint8Array): string;
 
-// @public (undocumented)
+// @public
 export interface Transport {
     // (undocumented)
     send(request: TransportRequest): Promise<TransportResponse>;
@@ -164,7 +163,7 @@ export interface TransportRequest {
     url: string;
 }
 
-// @public (undocumented)
+// @public
 export interface TransportResponse {
     // (undocumented)
     body: string;
@@ -176,10 +175,10 @@ export interface TransportResponse {
 // @public
 export function trimall(s: string | null | undefined): string;
 
-// @public (undocumented)
+// @public
 export function utf8Decode(bytes: Uint8Array): string;
 
-// @public (undocumented)
+// @public
 export function utf8Encode(s: string): Bytes;
 
 // Warning: (ae-forgotten-export) The symbol "ParsedDigestHeader" needs to be exported by the entry point index.d.ts
@@ -187,7 +186,7 @@ export function utf8Encode(s: string): Bytes;
 // @public
 export function verifyDigestHeader(value: string | undefined, suite: AlgorithmSuite): ParsedDigestHeader | null;
 
-// @public (undocumented)
+// @public
 export interface VerifyResult {
     // (undocumented)
     ok: boolean;
@@ -198,7 +197,7 @@ export interface VerifyResult {
 // @public
 export function webcrypto(): Promise<Crypto>;
 
-// @public (undocumented)
+// @public
 export class WopClient {
     constructor(config: WopConfig);
     buildRequest(method: string, path: string, body?: string, options?: RequestOptions): Promise<RequestDraft>;
@@ -223,7 +222,7 @@ export interface WopConfig {
     suite: string;
 }
 
-// @public (undocumented)
+// @public
 export class WopError extends Error {
     constructor(message: string, category?: WopErrorCategory);
     // (undocumented)

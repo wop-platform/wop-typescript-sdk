@@ -9,6 +9,7 @@ import type { Bytes } from './encode';
  * 发生在解包之后、bulk 解密之前（D8 时序），由 client 层执行。
  */
 
+/** DEK 载荷解析结果:alg 明文 + 解码后的 key/iv 字节 */
 export interface DekPayload {
   alg: string;
   key: Bytes;

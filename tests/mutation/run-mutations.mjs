@@ -19,9 +19,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
+// fileURLToPath 而非 URL.pathname：pathname 对空格/非 ASCII 目录名是 percent-encoded，
+// 任意机器的仓库路径必须经此转换（跨机器可移植性）
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const SRC_DIR = path.join(ROOT, 'src');
 const KILL_RATE_THRESHOLD = 0.9;
 const PER_OP_PER_FILE_CAP = 8; // 每算子每文件采样上限
@@ -30,7 +33,9 @@ const MUTANT_TIMEOUT_MS = 90_000;
 const EXCLUDE = new Set(['index.ts', 'types.ts']);
 
 const require = createRequire(import.meta.url);
-const VITEST_BIN = path.join(ROOT, 'node_modules', '.bin', 'vitest');
+// Windows 上 node_modules/.bin/vitest 是 POSIX sh 脚本不可直接 spawn：
+// 统一以 process.execPath 直跑 vitest 的 JS 入口（跨平台），windowsHide 防控制台窗口闪现
+const VITEST_ENTRY = path.join(ROOT, 'node_modules', 'vitest', 'vitest.mjs');
 
 /** 12 类算子注册表：op → { pick(sourceFile): MutPoint[] } */
 const OPERATORS = {
@@ -196,10 +201,11 @@ function listSrcFiles() {
 }
 
 function runVitest(label) {
-  const r = spawnSync(VITEST_BIN, ['run', '--reporter=dot', '--silent'], {
+  const r = spawnSync(process.execPath, [VITEST_ENTRY, 'run', '--reporter=dot', '--silent'], {
     cwd: ROOT,
     timeout: MUTANT_TIMEOUT_MS,
     encoding: 'utf8',
+    windowsHide: true,
   });
   if (r.error && r.error.code === 'ETIMEDOUT') return { killed: true, detail: 'timeout' };
   return { killed: r.status !== 0, detail: `exit=${r.status}` };
@@ -229,7 +235,8 @@ function main() {
         mutants.push({
           id: `${path.basename(file)}:${sf.getLineAndCharacterOfPosition(p.start).line + 1}`,
           op,
-          file,
+          // 报告落盘用相对路径：绝对路径含本机用户目录，跨机器不可移植
+          file: path.relative(ROOT, file),
           ...p,
         });
       }
@@ -248,14 +255,15 @@ function main() {
   const results = [];
   let done = 0;
   for (const m of mutants) {
-    const src = originals.get(m.file);
+    const absFile = path.join(ROOT, m.file); // m.file 为报告用相对路径，IO 走绝对路径
+    const src = originals.get(absFile);
     const mutated = src.slice(0, m.start) + m.replacement + src.slice(m.end);
     try {
-      fs.writeFileSync(m.file, mutated);
+      fs.writeFileSync(absFile, mutated);
       const { killed, detail } = runVitest(m.id);
       results.push({ ...m, killed, detail });
     } finally {
-      fs.writeFileSync(m.file, src); // 立即恢复
+      fs.writeFileSync(absFile, src); // 立即恢复
     }
     done += 1;
     if (done % 10 === 0) console.log(`  … ${done}/${mutants.length}`);

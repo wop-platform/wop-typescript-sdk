@@ -15,6 +15,7 @@ export type WopErrorCategory =
   | 'consistency'
   | 'system';
 
+/** SDK 统一错误:category 取 WopErrorCategory,对外语义明确/模糊按分类规则 */
 export class WopError extends Error {
   readonly category: WopErrorCategory;
 

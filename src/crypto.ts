@@ -161,6 +161,7 @@ export async function aesGcmDecrypt(
   }
 }
 
+/** AES-256-GCM 参数前置守卫:key 恰 32B、IV 恰 12B,越界即 parse 拒绝 */
 function assertAesGcmParams(key: Uint8Array, iv: Uint8Array): void {
   if (key.length !== 32) {
     throw new WopError(`AES-256-GCM 密钥长度非法：${key.length} 字节（须 32）`, 'parse');

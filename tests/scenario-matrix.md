@@ -58,12 +58,15 @@
 | #14 | S11 | 同参数重放构造请求得到全等结果 |
 | #15 | S12 | 响应体超过 11MiB 上限时断流拒绝 |
 
-## 四、覆盖与变异闭环（2026-08-29 终局数字）
+## 四、覆盖与变异闭环（2026-08-31 定局轮）
 
-- 行/分支/函数/语句覆盖率：**100% / 100% / 100% / 100%**（vitest coverage-v8，13 文件 174 测试）。
-  修复缺口：`src/client.ts:326-327`（rsaVerify 异常 catch → 模糊验签失败，I7）→ tests/hardening.spec.ts。
-- 变异测试：`npm run test:mutation`（tests/mutation/run-mutations.mjs），**12 类算子**，263 个变异体，
-  击杀 250，**击杀率 95.06%**（门禁 ≥90%）；13 个幸存体均为黑盒等价，证明见
-  `tests/mutation/EQUIVALENT-MUTANTS.md`。
+- 行/分支/函数/语句覆盖率：**100% / 100% / 100% / 100%**（vitest coverage-v8）。
+  08-29 修复缺口：`src/client.ts:326-327`（rsaVerify 异常 catch → 模糊验签失败，I7）→ tests/hardening.spec.ts。
+- 变异测试：`npm run test:mutation`（tests/mutation/run-mutations.mjs），**12 类算子**，262 个变异体，
+  击杀 247，**击杀率 94.27%**（门禁 ≥90%）；15 个幸存体均为黑盒等价，证明见
+  `tests/mutation/EQUIVALENT-MUTANTS.md`（含 08-31 main 侧 code-scanning 修复 cb51dbd 后的
+  `trimBase64Padding` 新等价体）。
 - Gherkin：`npm run test:bdd`（cucumber-js），15 场景 49 步全过。
-- 测试资产：146（既有）+ 28（mutation-killers）= 174 vitest 测试 + 15 Gherkin 场景。
+- 测试资产：177 vitest 测试（13 文件；08-31 含用户增补 3 个）+ 15 Gherkin 场景。
+- 断言纪律：全仓遵循 wop-sdk-spec 附录 **D6**（协议类消息全等 / 密钥参与类固定模糊文案 /
+  category 显式断言 / 幸存体逐个举证）。

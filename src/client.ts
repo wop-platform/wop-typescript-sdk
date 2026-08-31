@@ -19,16 +19,7 @@ import type { Bytes } from './encode';
 import type { Transport } from './transport/types';
 import { FetchTransport } from './transport/fetch';
 
-/**
- * WopClient：商户侧协议编排（spec §2 概念 API 的 TS 映射）。
- *
- * - buildRequest：canonicalRequest → 商户私钥加签 → RequestDraft（L0/L2）
- * - verifyResponse / verifyCallback：F6 固定顺序
- *   结构前置校验（套件一致、D2/I1 digest 规则）→ 验签 → digest 复核
- *   → DEK 解包 → alg 族比对（bulk 前）→ bulk 解密
- * - 确定性：同输入同输出，CSPRNG 项（nonce/IV/DEK）与时间戳可注入（测试/重放）
- */
-
+/** 客户端配置:商户身份(appKey)、算法套件与密钥材料,可选网关基址 */
 export interface WopConfig {
   appKey: string;
   /** securityReq，如 WOP-RSA3072-SHA256 */
@@ -40,6 +31,7 @@ export interface WopConfig {
   gatewayBaseUrl?: string;
 }
 
+/** 请求级可选项:加密等级、签名窗口与测试注入点(生产留空走默认/CSPRNG) */
 export interface RequestOptions {
   /** L0 明文（默认）/ L2 数字信封 */
   level?: 'L0' | 'L2';
@@ -55,6 +47,7 @@ export interface RequestOptions {
   iv?: Uint8Array;
 }
 
+/** buildRequest 产物:可直接交任意 HTTP 栈发送的(method, path, headers, wireBody) */
 export interface RequestDraft {
   method: string;
   path: string;
@@ -64,6 +57,7 @@ export interface RequestDraft {
   wireBody: string;
 }
 
+/** 响应/回调校验结果:ok + 成功时明文 / 失败时 reason(失败原因语义见成员注释) */
 export interface VerifyResult {
   ok: boolean;
   /** L0 为原文 body，L2 为解密明文 */
@@ -72,13 +66,16 @@ export interface VerifyResult {
   reason?: string;
 }
 
+/** send() 返回:VerifyResult 之上附加 HTTP 原始 status/headers/body */
 export interface SendResult extends VerifyResult {
   status: number;
   headers: Record<string, string>;
   body: string;
 }
 
+/** 默认签名有效窗口(秒),RequestOptions.expiredSeconds 缺省值 */
 const DEFAULT_EXPIRED_SECONDS = 1800;
+/** L2 数字信封 x-wop-encrypt 头前缀(小写),识别该头必入签 */
 const ENCRYPT_HEADER_PREFIX = 'l2';
 
 /** 签名 base64url 定长（字符）→ 解码字节定长（§3.3①：3072→384B，4096→512B） */
@@ -87,6 +84,15 @@ const SIGNATURE_RAW_LENGTH: Record<AlgorithmSuite['signatureB64uLength'], number
   683: 512,
 };
 
+/**
+ * WopClient:商户侧协议编排(spec §2 概念 API 的 TS 映射)。
+ *
+ * - buildRequest:canonicalRequest → 商户私钥加签 → RequestDraft(L0/L2)
+ * - verifyResponse / verifyCallback:F6 固定顺序
+ *   结构前置校验(套件一致、D2/I1 digest 规则)→ 验签 → digest 复核
+ *   → DEK 解包 → alg 族比对(bulk 前)→ bulk 解密
+ * - 确定性:同输入同输出,CSPRNG 项(nonce/IV/DEK)与时间戳可注入(测试/重放)
+ */
 export class WopClient {
   readonly config: WopConfig;
   readonly suite: AlgorithmSuite;
@@ -409,6 +415,7 @@ export class WopClient {
   }
 }
 
+/** header 名统一 trim + 小写化、值 trim(响应/回调头规范化,canonical 重建前置) */
 function lowercaseHeaders(headers: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(headers)) {
