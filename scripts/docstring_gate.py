@@ -124,7 +124,7 @@ def strip_noncode(src: str) -> str:
                     blank(i + 1)
                 i += 2
                 continue
-            if c == quote or c == '\n':  # 未闭合字符串按行终止(容错)
+            if c in [quote, '\n']:  # 未闭合字符串按行终止(容错)
                 blank(i); mode = 'code'
             else:
                 blank(i)
@@ -153,13 +153,13 @@ def strip_noncode(src: str) -> str:
 
 def _is_regex_start(last_code: str, last_word: str) -> bool:
     """斜杠前驱判别:运算位 → 正则字面量;操作数位 → 除号。"""
-    if last_code == '':
+    if not last_code:
         return True
     if last_code in _REGEX_PRECEDERS:
         return True
-    if (last_code.isalnum() or last_code in '_$') and last_word in _REGEX_KEYWORDS:
-        return True
-    return False
+    return (
+        last_code.isalnum() or last_code in '_$'
+    ) and last_word in _REGEX_KEYWORDS
 
 
 def _skip_regex(src: str, start: int) -> int:
@@ -252,7 +252,7 @@ def parse_method(line: str):
         m = re.match(r'([A-Za-z_$][\w$]*)\s*', s)
         if not m:
             return None
-        word = m.group(1)
+        word = m[1]
         if word in METHOD_MODIFIERS:
             if word == 'private':
                 private = True
@@ -263,7 +263,7 @@ def parse_method(line: str):
         return None
     if word in ('get', 'set'):  # 存取器:get name(...) → name
         m2 = re.match(r'([A-Za-z_$][\w$]*)\s*\(', s)
-        return (m2.group(1), 'accessor') if m2 else None
+        return (m2[1], 'accessor') if m2 else None
     if word in METHOD_RESERVED:
         return None
     if re.match(r'[A-Za-z_$][\w$]*\s*(?:<[^>(]*/?>)?\s*\(', s):
@@ -280,18 +280,32 @@ def has_docstring(orig_lines: list, decl_idx: int) -> bool:
         return False
     if not COMMENT_LINE_RE.match(orig_lines[i]):
         return False
-    while i - 1 >= 0 and orig_lines[i - 1].strip() \
-            and COMMENT_LINE_RE.match(orig_lines[i - 1]):
+    while (
+        i >= 1
+        and orig_lines[i - 1].strip()
+        and COMMENT_LINE_RE.match(orig_lines[i - 1])
+    ):
         i -= 1
     first = orig_lines[i].strip()
     return first.startswith('/**') or first.startswith('//')
 
 
 def _decl_kind(cline: str) -> str:
-    for kw in ('function', 'class', 'interface', 'type', 'enum', 'const'):
-        if re.search(r'\b' + kw + r'\b', cline):
-            return kw
-    return 'decl'
+    return next(
+        (
+            kw
+            for kw in (
+                'function',
+                'class',
+                'interface',
+                'type',
+                'enum',
+                'const',
+            )
+            if re.search(r'\b' + kw + r'\b', cline)
+        ),
+        'decl',
+    )
 
 
 def analyze(path: str, src: str) -> list:
@@ -315,8 +329,7 @@ def analyze(path: str, src: str) -> list:
     for idx, cline in enumerate(code_lines):
         if depths[idx] == 0:
             in_exported_class = False
-            m = EXPORT_DECL_RE.match(cline)
-            if m:
+            if m := EXPORT_DECL_RE.match(cline):
                 name = m.group(1)
                 kind = _decl_kind(cline)
                 symbols.append(Symbol(path, idx + 1, name, 'external', kind))
@@ -324,13 +337,11 @@ def analyze(path: str, src: str) -> list:
                     in_exported_class = True
                     class_name = name
                 continue
-            m = PLAIN_DECL_RE.match(cline)
-            if m:
+            if m := PLAIN_DECL_RE.match(cline):
                 symbols.append(Symbol(path, idx + 1, m.group(1), 'internal',
                                       _decl_kind(cline)))
         elif depths[idx] == 1 and in_exported_class:
-            parsed = parse_method(cline)
-            if parsed:
+            if parsed := parse_method(cline):
                 name, kind = parsed
                 symbols.append(Symbol(path, idx + 1, f'{class_name}.{name}',
                                       'external', kind))
@@ -364,22 +375,23 @@ def scan_repo() -> Report:
         ).stdout
     except subprocess.CalledProcessError as exc:
         print(f'git ls-files 失败: {exc}', file=sys.stderr)
-        raise SystemExit(2)
-    files = []
-    for rel in sorted(l.strip() for l in out.splitlines() if l.strip()):
-        if rel.endswith('.d.ts'):  # 生成物/环境声明排除
-            continue
-        files.append((rel, (REPO_ROOT / rel).read_text(encoding='utf-8')))
+        raise SystemExit(2) from exc
+    files = [
+        (rel, (REPO_ROOT / rel).read_text(encoding='utf-8'))
+        for rel in sorted(l.strip() for l in out.splitlines() if l.strip())
+        if not rel.endswith('.d.ts')
+    ]
     return scan_files(files)
 
 
 def format_report(rep: Report) -> str:
     lines = list(rep.missing)
-    lines.append(
-        f'对外 {rep.external_documented}/{rep.external_total}'
-        f'、内部 {rep.internal_documented}/{rep.internal_total}'
+    lines.extend(
+        (
+            f'对外 {rep.external_documented}/{rep.external_total}、内部 {rep.internal_documented}/{rep.internal_total}',
+            f'docstring gate: {"PASS" if rep.ok else "FAIL"}',
+        )
     )
-    lines.append(f'docstring gate: {"PASS" if rep.ok else "FAIL"}')
     return '\n'.join(lines)
 
 
