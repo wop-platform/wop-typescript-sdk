@@ -11,6 +11,7 @@ export const MAX_RESPONSE_BYTES = 11 << 20;
  * fetch 原生适配器（零依赖，Node ≥18 / 浏览器）。
  */
 export class FetchTransport implements Transport {
+  /** 发送请求并结构化返回;发送失败抛 system,越限语义见类注释 */
   async send(request: TransportRequest): Promise<TransportResponse> {
     const init: RequestInit = { method: request.method, headers: request.headers };
     if (request.body !== '') {

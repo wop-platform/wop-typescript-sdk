@@ -127,6 +127,33 @@
       "replace": " * - 无 body（GET）→ header 缺席；有 body 必传必入 signedHeaders（I1，由 client 层保证）",
       "gate": "tests",
       "expect_block": false
+    },
+    {
+      "id": "D-01",
+      "description": "docstring 门灵敏度:删除 error.ts SIGNATURE_FAILED(对外 export const)的 docstring,对外 100% 红线应拦截",
+      "target": "src/error.ts",
+      "find": "/** I7：验签失败对外模糊语义 */\nexport const SIGNATURE_FAILED = '签名验证失败';",
+      "replace": "export const SIGNATURE_FAILED = '签名验证失败';",
+      "gate": "docstring",
+      "expect_block": true
+    },
+    {
+      "id": "D-02",
+      "description": "docstring 门灵敏度:删除 encode.ts toHex(对外 export function)的 docstring,对外 100% 红线应拦截",
+      "target": "src/encode.ts",
+      "find": "/** 小写 hex 编码 */\nexport function toHex(bytes: Uint8Array): string {",
+      "replace": "export function toHex(bytes: Uint8Array): string {",
+      "gate": "docstring",
+      "expect_block": true
+    },
+    {
+      "id": "D-03",
+      "description": "docstring 门灵敏度:删除 fetch.ts FetchTransport.send(export 类公开方法,契约计入对外)的 docstring,对外 100% 红线应拦截",
+      "target": "src/transport/fetch.ts",
+      "find": "  /** 发送请求并结构化返回;发送失败抛 system,越限语义见类注释 */\n  async send(request: TransportRequest): Promise<TransportResponse> {",
+      "replace": "  async send(request: TransportRequest): Promise<TransportResponse> {",
+      "gate": "docstring",
+      "expect_block": true
     }
   ]
 }
