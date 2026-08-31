@@ -63,6 +63,7 @@ echo "上游: ${UP} @ ${ANCHOR} (${HEAD_SHA:0:9})"
 # 展开逻辑在 factory_lib.py dist-manifest（2026-08-28 自此处 heredoc 下沉，
 # 铁律 4：git 子进程编排归 Python；无清单=空输出，警告走 stderr）
 python3 "$FACTORY/factory_lib.py" dist-manifest "$UP" "$HEAD_SHA" > /tmp/.factory-dist.$$
+
 # Sourcery 回归闸（2026-08-31 事故锚：追平所取上游快照早于下游已修复版，
 # 100 个已清零 issue 整体回退，PR gate 才拦截——闸前移到追平时点）。
 # 语义与 sourcery-review-gate 同构：exit code（0=干净 1=有 issue 其余=异常）。
@@ -89,7 +90,6 @@ if [ "$MODE" = apply ] && command -v sourcery >/dev/null 2>&1; then
             || { echo "Sourcery 回归闸基线: .factory 已有 issue——先清零再追平（闸口径=PR gate）" >&2; exit 2; }
 fi
 
-
 # 上游 mode+blob（git show 丢 mode，覆盖后须恢复执行位）
 up_tree() { git -C "$UP" ls-tree "$HEAD_SHA" -- ".factory/$1"; }
 
@@ -112,6 +112,7 @@ while IFS=$'\t' read -r kind rel; do
     echo "  [$kind] $rel: 本地缺失"
     [ "$kind" = full ] && DRIFT=1
     if [ "$MODE" = apply ] && [ "$kind" = full ]; then
+      mkdir -p "$(dirname "$dst")" # 缺失父目录先建（wop-skills：tests/ 整缺，重定向即崩）
       git -C "$UP" cat-file blob "$up_blob" > "$dst"
       chmod "${up_mode: -3}" "$dst" 2>/dev/null || chmod +x "$dst"
       echo "    → 已补齐"; APPLIED=$((APPLIED+1))
@@ -153,6 +154,7 @@ if [ "$MODE" = apply ]; then
       *) echo "Sourcery 回归闸计数失败（CLI 限流/异常，fail-closed 拦截）" >&2; exit 2 ;;
     esac
   fi
+
   python3 - "$LOCKFILE" "$HEAD_SHA" <<'PY'
 import json, sys, pathlib, datetime
 p = pathlib.Path(sys.argv[1])
@@ -166,7 +168,6 @@ PY
 fi
 
 # --check 收尾
-
 if [ "$DRIFT" = 0 ]; then
   echo "full 面干净（local 面 ${LOCAL_DIFF} 项人工漂移不计失败）"
 else

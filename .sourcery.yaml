@@ -3,6 +3,8 @@
 # - no-loop-in-tests / no-conditionals-in-tests：测试内循环/条件断言是惯用法
 # - possible-incorrect-bitwise-operator（ts）：src/encode.ts:35 是 RFC 4648 §3.5 尾随位校验
 #   的有意位掩码（低 4/2 位须零），非逻辑错误
+# 2026-09-01 评审确认：low-code-quality —— 长 main 顺序流程的聚合标签
+#   （无可操作子建议，拆分收益边际），保留；与上游 awesome-rules 对齐
 # 其余规则全开；新增触发点由 CI gate（sourcery-review-gate.yml）拦截。
 version: '1'
 
@@ -26,6 +28,7 @@ rule_settings:
   - no-loop-in-tests
   - no-conditionals-in-tests
   - possible-incorrect-bitwise-operator
+  - low-code-quality
   rule_types:
   - refactoring
   - suggestion
