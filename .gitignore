@@ -5,6 +5,10 @@ coverage/
 .DS_Store
 etc/temp/
 
+# python
+.pytest_cache
+__pycache__
+
 # 工厂治理层入库（.factory/ 宪法/hosting(ADR-008)/状态机/prompts/guard/tests；
 # 锚定 gtsp-wop-gateway 移植模式）。不入库：运行时产物与机器态
 .factory/artifacts/
@@ -12,8 +16,6 @@ etc/temp/
 .factory/worktrees/
 .factory/metrics/
 .factory/var/
-.factory/**/.pytest_cache/
-.factory/**/__pycache__/
 .factory/regression/**/out/
 .factory/feedback-log.jsonl
 .factory/upstream-lock.json
