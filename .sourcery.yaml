@@ -1,0 +1,4 @@
+# Sourcery 扫描配置：排除构建产物（jacoco/coverage/dist 报告与 bundle 被逐字符扫描，非源码噪音）
+ignore:
+  - coverage/
+  - dist/

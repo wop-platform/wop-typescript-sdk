@@ -266,7 +266,7 @@ describe('envelope.ts：DEK 载荷段结构文案全等（§6.1）', () => {
 });
 
 describe('client.ts：出向/入向错误文案全等（I7 纪律下协议类消息是契约）', () => {
-  function makeClient(overrides: Record<string, unknown> = {}): WopClient {
+  const makeClient = (overrides: Record<string, unknown> = {}): WopClient => {
     return new WopClient({
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
