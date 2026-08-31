@@ -325,43 +325,44 @@ def _load_and_filter(defects_path: str, only: str | None) -> list[Defect]:
     return defects
 
 
-    for d in defects:
-        print(f"[{d.id}] {d.description}（gate={d.gate}）")
-        target = REPO_ROOT / d.target
-        if not target.is_file():
-            outcomes.append(Outcome(d, "FAIL-config", f"target 不存在: {d.target}"))
-            print("    FAIL-config: target 不存在")
-            continue
-        if tracked_and_dirty(d.target):
-            outcomes.append(Outcome(d, "SKIP", "target 含人工未提交修改"))
-            print("    SKIP: target 含人工未提交修改，避免交叠")
-            continue
-        if d.gate == "docstring" and DOCSTRING_GATE is None:
-            outcomes.append(Outcome(d, "SKIP", "docstring 门未配置（factory-local.json 缺 docstring_gate_cmd，缺省不启用）"))
-            print("    SKIP: docstring 门未配置（缺省不启用），缺陷无法验证")
-            continue
+def _process_defect(d: Defect, outcomes: list[Outcome], originals: dict[Path, str]) -> None:
+    """单条缺陷全流程：前置检查 → 注入 → 跑门 → 判定 → finally 原文本写回。"""
+    print(f"[{d.id}] {d.description}（gate={d.gate}）")
+    target = REPO_ROOT / d.target
+    if not target.is_file():
+        outcomes.append(Outcome(d, "FAIL-config", f"target 不存在: {d.target}"))
+        print("    FAIL-config: target 不存在")
+        return
+    if tracked_and_dirty(d.target):
+        outcomes.append(Outcome(d, "SKIP", "target 含人工未提交修改"))
+        print("    SKIP: target 含人工未提交修改，避免交叠")
+        return
+    if d.gate == "docstring" and DOCSTRING_GATE is None:
+        outcomes.append(Outcome(d, "SKIP", "docstring 门未配置（factory-local.json 缺 docstring_gate_cmd，缺省不启用）"))
+        print("    SKIP: docstring 门未配置（缺省不启用），缺陷无法验证")
+        return
 
-        original: str | None = None
-        try:
-            original = apply_defect(target, d)
-            originals[target] = original
-            rc = run_gate(d.gate, d.target)
-            verdict, detail = judge(d, rc)
-            outcomes.append(Outcome(d, verdict, detail))
-            print(f"    {verdict}: {detail}")
-        except ValueError as exc:
-            outcomes.append(Outcome(d, "FAIL-config", str(exc)))
-            print(f"    FAIL-config: {exc}")
-        finally:
-            if original is not None:
-                target.write_text(original, encoding="utf-8")
+    original: str | None = None
+    try:
+        original = apply_defect(target, d)
+        originals[target] = original
+        rc = run_gate(d.gate, d.target)
+        verdict, detail = judge(d, rc)
+        outcomes.append(Outcome(d, verdict, detail))
+        print(f"    {verdict}: {detail}")
+    except ValueError as exc:
+        outcomes.append(Outcome(d, "FAIL-config", str(exc)))
+        print(f"    FAIL-config: {exc}")
+    finally:
+        if original is not None:
+            target.write_text(original, encoding="utf-8")
 
-    # 还原完整性校验：凡注入过的文件，当前字节必须与备份一致
-    residual = []
-    for target, original in originals.items():
-        if target.read_text(encoding="utf-8") != original:
-            residual.append(str(target.relative_to(REPO_ROOT)))
-    if residual:
+
+def _check_restored(originals: dict[Path, str]) -> int | None:
+    """还原完整性校验：凡注入过的文件，当前字节必须与备份一致。"""
+    if residual := [str(target.relative_to(REPO_ROOT))
+                    for target, original in originals.items()
+                    if target.read_text(encoding="utf-8") != original]:
         print(f"\nFATAL: 以下文件还原失败（请人工核对该文件是否已恢复原状）: {residual}",
               file=sys.stderr)
         return 3
