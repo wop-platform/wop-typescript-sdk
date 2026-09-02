@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@wanlianyida%2Fwop-typescript-sdk)](https://www.npmjs.com/package/@wanlianyida/wop-typescript-sdk) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-typescript-sdk)](https://github.com/wop-platform/wop-typescript-sdk/releases)
 [![CI](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/github/license/wop-platform/wop-typescript-sdk)](LICENSE)
-[![Node 18+](https://img.shields.io/badge/node-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-typescript-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
 
 
 Official merchant-side TypeScript SDK for the WOP gateway: encapsulates the protocol core
@@ -10,9 +10,9 @@ Official merchant-side TypeScript SDK for the WOP gateway: encapsulates the prot
 so merchants can integrate securely without knowing canonicalRequest, suite derivation,
 or wire byte formats.
 
-- **Zero runtime dependencies**: all cryptography via WebCrypto (`globalThis.crypto`, Node ≥18 / browser secure context)
+- **Zero runtime dependencies**: all cryptography via WebCrypto (`globalThis.crypto`, Node ≥20 / browser secure context)
 - **Protocol core + pluggable transport**: built-in native `fetch` adapter; `axios` shipped as a peer adapter behind a separate entry point
-- **CI-verified compatibility matrix**: Node 18–24 × axios 1.0–latest × TypeScript **5.0–7.0** (type-consumer floor 5.0, forward-probing to the latest major), published artifacts checked across ESM/CJS × node10/node16/bundler resolutions + API snapshot gate
+- **CI-verified compatibility matrix**: Node 20–24 × axios 1.0–latest × TypeScript **5.0–7.0** (type-consumer floor 5.0, forward-probing to the latest major), published artifacts checked across ESM/CJS × node10/node16/bundler resolutions + API snapshot gate
 - **100% line / branch / function / statement coverage**, byte-level anchored to golden test vectors
 
 ## Supported algorithm suites
