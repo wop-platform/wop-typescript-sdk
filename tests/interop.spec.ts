@@ -175,7 +175,7 @@ interface InteropCase {
 const CASES = (fixture as { _meta: { format: string; caseCount: number }; cases: InteropCase[] }).cases;
 
 const SM2 = 'WOP-SM2-SM3';
-const FIXTURE_SHA256 = '3030e98fa6174f1ca905f35d7742ac9471141945dde66f29f01021d51a555f7a'; // 真源 wop-specs/interop/v1/interop-cases.json
+const FIXTURE_SHA256 = 'c920ca1a93ccb3899a659f59fed6ec4652cf9e1b3b58bbdac23c45ac3ed2353e'; // 真源 wop-specs/interop/v1/interop-cases.json（30 条含 n17，2026-09-02 冻结）
 
 // 已知 id 哨兵：新增/漂移用例必须显式登记（防 fixture 静默变更）
 const KNOWN_IDS = new Set([
@@ -208,6 +208,7 @@ const KNOWN_IDS = new Set([
   'n14-missing-signed-header',
   'n15-digest-without-body',
   'n16-replay-cross-path',
+  'n17-encrypt-missing-dek',
 ]);
 
 // canonical class（合同错误分类表，wop-specs/interop/v1 README）
@@ -216,7 +217,8 @@ type CanonicalClass = 'verify-failed' | 'decrypt-failed' | 'digest-mismatch' | '
 /**
  * 本仓对外错误语义（VerifyResult.reason）→ canonical class 显式映射表。
  * 模糊二态（I7）以常量文案精确匹配；明确类按可辨识前缀归类；
- * 其余明确拒绝（解析/结构/支持/套件）→ protocol（与 Go classOf default 对齐）。
+ * protocol 族同样逐条锚定文案前缀（防回归漂移：任意/错误分类文案不得静默落入
+ * protocol——与 Go classOf 的 default 桶分类结果一致，但拒绝未知文案）。
  */
 const REASON_TO_CLASS: ReadonlyArray<readonly [RegExp, CanonicalClass]> = [
   // spec:interop-fuzzy 验签模糊：n16 重放等签名层故障
@@ -228,6 +230,18 @@ const REASON_TO_CLASS: ReadonlyArray<readonly [RegExp, CanonicalClass]> = [
   [/^有 body 但缺少 x-wop-content-digest/, 'digest-mismatch'],
   // spec:interop-alg 一致性明确（D8）：n04 dek alg 跨族
   [/^DEK alg 与套件族不符/, 'alg-mismatch'],
+  // spec:interop-protocol 结构明确拒绝：逐条锚定（n03 digest 跨族 / n06 b64 padding）
+  [/^digest header ".*" 与套件 .* 跨族/, 'protocol'],
+  [/^base64url 解码失败/, 'protocol'],
+  // spec:interop-protocol 结构明确拒绝：n10 digest 未签名 / n11 响应套件不符
+  [/^x-wop-content-digest 未列入 signedHeaders/, 'protocol'],
+  [/^响应套件 ".*" 与客户端配置 ".*" 不符/, 'protocol'],
+  // spec:interop-protocol 结构明确拒绝：n12 信封缺字段 / n14 声明头缺失 / n15 无 body 携 digest
+  [/^L2 响应 body 缺少 encrypted 字段/, 'protocol'],
+  [/^signedHeaders 声明了未提供的头/, 'protocol'],
+  [/^无响应体不应携带 x-wop-content-digest/, 'protocol'],
+  // spec:interop-protocol 结构明确拒绝：n17 L2 加密头缺 dek 段
+  [/^x-wop-encrypt 格式错误：L2 须携带 dek=/, 'protocol'],
 ];
 
 function classOf(reason: string | undefined): CanonicalClass {
@@ -238,8 +252,8 @@ function classOf(reason: string | undefined): CanonicalClass {
   for (const [re, cls] of REASON_TO_CLASS) {
     if (re.test(reason!)) return cls;
   }
-  // spec:interop-protocol 解析/协议结构类明确拒绝（n03/n06/n07/n08/n10/n11/n12/n14/n15）
-  return 'protocol';
+  // spec:interop-protocol 未知文案拒绝：protocol 不作兜底桶，回归漂移必须显式登记
+  throw new Error(`未知 reason 文案，须在 REASON_TO_CLASS 显式登记后归类：${reason}`);
 }
 
 /** 套件 → 客户端（密钥与黄金向量同源：fixture 密钥体系 == crypto-vectors.json） */
@@ -269,10 +283,10 @@ describe('interop fixture 完整性（真源一致性哨兵）', () => {
     expect(createHash('sha256').update(raw).digest('hex')).toBe(FIXTURE_SHA256);
   });
 
-  it('格式/caseCount 元数据一致 + 条数哨兵 29', () => {
+  it('格式/caseCount 元数据一致 + 条数哨兵 30', () => {
     const meta = (fixture as { _meta: { format: string; caseCount: number } })._meta;
     expect(meta.format).toBe('wop-interop-1');
-    expect(CASES.length).toBe(29);
+    expect(CASES.length).toBe(30);
     expect(meta.caseCount).toBe(CASES.length);
   });
 
@@ -385,8 +399,15 @@ describe('interop 消费：verify 方向（冻结样本，错误分类逐条对�
         c.expect!.errorClass,
       );
     }
-    expect(neg).toBe(12); // 条数哨兵：RSA negative 12 条
+    expect(neg).toBe(13); // 条数哨兵：RSA negative 13 条
     expect(sm2Neg).toBe(4); // 条数哨兵：SM2 negative 4 条（明确拒绝消费）
+  });
+});
+
+describe('classOf 分类表自证（未知文案拒绝）', () => {
+  // spec:interop-protocol 否定式条款：protocol 不作兜底桶，未登记文案必须显式失败而非静默归类
+  it('未知 reason 文案：抛错拒绝（防回归漂移静默落入 protocol）', () => {
+    expect(() => classOf('完全未登记的失败文案')).toThrowError(/未知 reason 文案/);
   });
 });
 
