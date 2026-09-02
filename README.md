@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@wanlianyida%2Fwop-typescript-sdk)](https://www.npmjs.com/package/@wanlianyida/wop-typescript-sdk) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-typescript-sdk)](https://github.com/wop-platform/wop-typescript-sdk/releases)
 [![CI](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/github/license/wop-platform/wop-typescript-sdk)](LICENSE)
-[![Node 18+](https://img.shields.io/badge/node-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-typescript-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
 
 
 WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密），
@@ -10,9 +10,9 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 
 - 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
 - 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
-- **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥18 / 浏览器安全上下文）
+- **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥20 / 浏览器安全上下文）
 - **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
-- **兼容性矩阵 CI 验证**：Node 18–24 × **Linux / macOS / Windows** × axios 1.0–latest × TypeScript **5.0–7.0**（类型消费下界 5.0，前瞻至最新大版本），发布物 ESM/CJS × node10/node16/bundler 四解析模式 + API 快照门禁
+- **兼容性矩阵 CI 验证**：Node 20–24 × **Linux / macOS / Windows** × axios 1.0–latest × TypeScript **5.0–7.0**（类型消费下界 5.0，前瞻至最新大版本），发布物 ESM/CJS × node10/node16/bundler 四解析模式 + API 快照门禁
 - **行 / 分支 / 函数 / 语句覆盖率 100%**，黄金测试向量字节级锚定
 
 ## 支持的算法套件
