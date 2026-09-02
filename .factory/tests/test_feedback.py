@@ -318,23 +318,17 @@ def test_adapt_manifest_preserves_old_to_new_order():
     text = "".join("%s\ts%s\n" % (s, i) for i, s in enumerate(shas))
     assert [i["sha"] for i in feedback.adapt_manifest(text, set())] == shas
 
-
-def test_gather_commits_attaches_files(monkeypatch):
-    """_gather_commits 生产入口：files_by_sha 必须并入提交字典。
-
-    2026-08-31 sourcery 评审 bug_risk：_gather_commits 计算 _files_by_sha()
-    却丢弃结果，commits 无 files 键 → feedable_assets()/collect_pending()
-    看不到任何被修改资产（.factory 提交也判 pending 空）。本测试锚定
-    git log 与文件集两条子命令的合并契约。
-    """
-    commits_in = [
-        {"sha": "a" * 40, "subject": "s1", "feedable": True},
-        {"sha": "b" * 40, "subject": "s2", "feedable": False},
-    ]
-    files = {"a" * 40: {".factory/dispatch.sh", ".factory/state.py"}}
-    monkeypatch.setattr(feedback, "_git_log_commits", lambda: commits_in)
-    monkeypatch.setattr(feedback, "_files_by_sha", lambda: files)
+def test_gather_commits_merges_files(monkeypatch):
+    """_files_by_sha 结果必须挂回 commits（feedable/pending 判定的 files 来源）。"""
+    commits = [{"sha": "a" * 40, "subject": "s", "feedable": True},
+               {"sha": "b" * 40, "subject": "t", "feedable": False}]
+    # b 不提供映射：.get(sha, set()) 空集回退必须被测到（python#26 审查
+    # 收口——夹具若给全映射，回归为直接索引 fbs[sha] 后 KeyError 不可见）
+    fbs = {"a" * 40: {"factory_lib.py"}}
+    monkeypatch.setattr(feedback, "_git_log_commits", lambda: commits)
+    monkeypatch.setattr(feedback, "_files_by_sha", lambda: fbs)
     out = feedback._gather_commits()
-    assert out[0]["files"] == {".factory/dispatch.sh", ".factory/state.py"}
-    assert out[1]["files"] == ()
-    assert out[1]["sha"] == "b" * 40  # 原字段不被破坏
+    assert out[0]["files"] == {"factory_lib.py"}
+    # 未触碰资产的提交 → 空集（feedable_assets/collect_pending 的 .get 契约）
+    assert out[1]["files"] == set()
+    assert out[1]["feedable"] is False
