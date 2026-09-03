@@ -62,7 +62,9 @@
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "test:bdd": "node --import tsx node_modules/@cucumber/cucumber/bin/cucumber.js tests/features --import \"tests/features/steps/**/*.ts\" --format summary",
-    "test:mutation": "node tests/mutation/run-mutations.mjs"
+    "test:mutation": "node tests/mutation/run-mutations.mjs",
+    "release": "commit-and-tag-version",
+    "release:dry": "commit-and-tag-version --dry-run"
   },
   "keywords": [
     "wop",
