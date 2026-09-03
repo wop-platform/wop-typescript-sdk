@@ -1,6 +1,6 @@
 {
   "$schema": "https://awesome-rules.invalid/factory/mutations-v0.json",
-  "description": "S1 缺陷集（wop-typescript-sdk 本仓重铸）：篡改类（guard 门）+ 行为破坏类 B-1xx（tests 门 scripts/run_tests.sh --no-lock = vitest 全量 + BDD 商户旅程）。行为类 kill 证据 = 注入后 npm run test / npm run test:bdd 变红；负例（expect_block=false）验证门不全拒。证据留档 EVIDENCE-2026-08-29.md。",
+  "description": "S1 缺陷集（wop-typescript-sdk 本仓重铸）：篡改类（guard 门）+ 行为破坏类 B-1xx（tests 门 scripts/run_tests.sh --no-lock = vitest 全量 + BDD 商户旅程）。行为类 kill 证据 = 注入后 npm run test / npm run test:bdd 变红；负例（expect_block=false）验证门不全拒。证据留档 EVIDENCE-2026-09-03.md。",
   "defects": [
     {
       "id": "G-01",

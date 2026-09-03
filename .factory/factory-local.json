@@ -28,6 +28,7 @@
     "c": "判据c（不触周界）：触及 PERIMETER 的部分拆成独立 issue 走人类 MR（清单见 MISSION.md；安全敏感面加解密实现 crypto/keys/envelope/digest/canonical/encode/suite 默认全锁）"
   },
   "repo_identity": "wop-typescript-sdk",
+  "port_point": "56e4f54c",
   "reading_scopes": [
     "README.md",
     "docs/",
