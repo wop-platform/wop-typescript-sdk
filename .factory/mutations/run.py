@@ -53,7 +53,7 @@ def _final_gate_words(cfg_path: Path | None = None) -> list[str]:
     （如 "uv run pytest"）都正常解析——与 shell 侧 fix-issue/validate-pr
     的 "${GATE_ARGS[@]}" 直执同构（R2-M4 + PR #71 Sourcery #1：bash
     前缀会把 PATH 型首词当脚本文件名，必失败）。fail-closed：配置
-    缺失/缺键/非字符串/含引号/空 → RuntimeError（启动即炸，不产生
+    缺失/缺键/非字符串/含引号/含换行/空 → RuntimeError（启动即炸，不产生
     无效证据）。类型校验与 factory_lib._local_str 同规（PR #71
     Sourcery #2：str() 静默转换会让数字/列表在 py 侧放行而 shell 侧
     拒绝——两消费方行为必须一致）。
@@ -64,6 +64,8 @@ def _final_gate_words(cfg_path: Path | None = None) -> list[str]:
         raw_val = cfg["final_gate_cmd"]
         if not isinstance(raw_val, str):
             raise ValueError("final_gate_cmd 须为非空字符串")
+        if "\n" in raw_val or "\r" in raw_val:
+            raise ValueError("final_gate_cmd 禁含换行（read -r -a 只取首行，shlex 多行拆词，两侧 argv 分歧）")
         raw = raw_val.strip()
         if "'" in raw or '"' in raw:
             raise ValueError("final_gate_cmd 禁含引号（与 bash 侧 read -r -a 拆词一致性，R2-N8）")
@@ -83,12 +85,12 @@ FINAL_GATE = _final_gate_words()
 def _docstring_gate_words(cfg_path: Path | None = None) -> list[str] | None:
     """docstring 门命令（可选键）：factory-local.json docstring_gate_cmd 拆词。
 
-    与 _final_gate_words 同构但为**可选**门：键缺失/空 → None（未启用，
+    与 _final_gate_words 同构但为**可选**门：仅键缺失 → None（未启用，
     链脚本跳过；mutations 中 docstring 缺陷 SKIP——未启用的门无灵敏度
-    可证，不构成全绿）。键存在 → 校验同 final_gate_cmd（非空字符串 +
-    禁引号 + 禁反斜杠，fail-closed：配置损坏即 RuntimeError，禁止静默
-    降级为无门）。阈值（对外 API 100% + 内部 ≥80%）由各仓检查器自定，
-    本处只承载命令词。
+    可证，不构成全绿）。键存在即校验（非空字符串 + 禁引号/反斜杠/
+    换行；键存在但空 = 非法配置，fail-closed RuntimeError，
+    禁止静默降级为无门）。阈值（对外 API 100% + 内部 ≥80%）由各仓
+    检查器自定，本处只承载命令词。
     """
     p = cfg_path or REPO_ROOT / ".factory" / "factory-local.json"
     try:
@@ -98,6 +100,8 @@ def _docstring_gate_words(cfg_path: Path | None = None) -> list[str] | None:
         raw_val = cfg["docstring_gate_cmd"]
         if not isinstance(raw_val, str):
             raise ValueError("docstring_gate_cmd 须为非空字符串")
+        if "\n" in raw_val or "\r" in raw_val:
+            raise ValueError("docstring_gate_cmd 禁含换行（read -r -a 只取首行，shlex 多行拆词，两侧 argv 分歧）")
         raw = raw_val.strip()
         if "'" in raw or '"' in raw:
             raise ValueError("docstring_gate_cmd 禁含引号（与 bash 侧 read -r -a 拆词一致性，R2-N8）")
@@ -118,12 +122,21 @@ DOCSTRING_GATE = _docstring_gate_words()
 GUARD_TIMEOUT = 300
 TESTS_TIMEOUT = 600
 
-def write_stamp(evidence: str = "EVIDENCE-2026-08-24.md") -> str | None:
-    """全绿出口调用：当前周界 blob 写入 stamp（None = 无法绑定，不写）。"""
+def write_stamp(evidence: str | None = None) -> str | None:
+    """全绿出口调用：当前周界 blob 写入 stamp（None = 无法绑定，不写）。
+
+    evidence 指向人工证据留档名；缺省时取 mutations/ 目录最新
+    EVIDENCE-*.md（下游 wop-web-tools 反哺：静态默认文件名会过期——
+    写戳引用不存在的留档 = stamp 说谎）。无留档如实记「无留档文件」。
+    """
     import datetime
     blob = perimeter_blob()
     if not blob:
         return None
+    if evidence is None:
+        ev_dir = STAMP.parent
+        cands = sorted(ev_dir.glob("EVIDENCE-*.md")) if ev_dir.is_dir() else []
+        evidence = cands[-1].name if cands else "（无留档文件）"
     STAMP.write_text(json.dumps({
         "perimeter_blob": blob,
         "evidence": evidence,
@@ -315,62 +328,79 @@ def apply_defect(target: Path, defect: Defect) -> str:
     return original
 
 
-def _load_and_filter(defects_path: str, only: str | None) -> list[Defect]:
-    """加载缺陷清单 → 宣告 stamp 漂移 → --only id 过滤。"""
-    defects = load_defects(Path(defects_path))
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--only", help="逗号分隔的缺陷 id 过滤")
+    parser.add_argument("--defects", default=str(Path(__file__).parent / "defects.json"))
+    args = parser.parse_args()
+
+    defects = load_defects(Path(args.defects))
     stamp_stale_banner()
-    if only:
-        wanted = {x.strip() for x in only.split(",") if x.strip()}
+    if args.only:
+        wanted = {x.strip() for x in args.only.split(",") if x.strip()}
+        # 下游 wop-web-tools 反哺：未知 id 过滤结果为空仍以 0 退出写戳
+        # = 配置错误伪装成全量验证。缺失即拒绝（exit 2，对齐 guard 用法语义）。
+        all_ids = {d.id for d in defects}
+        if missing := wanted - all_ids:
+            print(f"配置错误: --only 含未知缺陷 id: {sorted(missing)}"
+                  f"（已知: {sorted(all_ids)}）", file=sys.stderr)
+            return 2
         defects = [d for d in defects if d.id in wanted]
-    return defects
 
+    outcomes: list[Outcome] = []
+    originals: dict[Path, str] = {}
 
-def _process_defect(d: Defect, outcomes: list[Outcome], originals: dict[Path, str]) -> None:
-    """单条缺陷全流程：前置检查 → 注入 → 跑门 → 判定 → finally 原文本写回。"""
-    print(f"[{d.id}] {d.description}（gate={d.gate}）")
-    target = REPO_ROOT / d.target
-    if not target.is_file():
-        outcomes.append(Outcome(d, "FAIL-config", f"target 不存在: {d.target}"))
-        print("    FAIL-config: target 不存在")
-        return
-    if tracked_and_dirty(d.target):
-        outcomes.append(Outcome(d, "SKIP", "target 含人工未提交修改"))
-        print("    SKIP: target 含人工未提交修改，避免交叠")
-        return
-    if d.gate == "docstring" and DOCSTRING_GATE is None:
-        outcomes.append(Outcome(d, "SKIP", "docstring 门未配置（factory-local.json 缺 docstring_gate_cmd，缺省不启用）"))
-        print("    SKIP: docstring 门未配置（缺省不启用），缺陷无法验证")
-        return
+    for d in defects:
+        print(f"[{d.id}] {d.description}（gate={d.gate}）")
+        # 下游 wop-web-tools 反哺：d.target 绝对路径会重置 REPO_ROOT 拼接
+        # （Path / 语义），`..` 可越仓——--defects 载外部 JSON 时指向仓外
+        # 文件注入+写回（进程非正常终止 = 注入残留落仓外）。resolve 后
+        # 必须仍在 REPO_ROOT 内。
+        target = (REPO_ROOT / d.target).resolve()
+        try:
+            target.relative_to(REPO_ROOT)
+        except ValueError:
+            outcomes.append(Outcome(d, "FAIL-config", f"target 越出仓库根: {d.target}"))
+            print("    FAIL-config: target 越出仓库根")
+            continue
+        if not target.is_file():
+            outcomes.append(Outcome(d, "FAIL-config", f"target 不存在: {d.target}"))
+            print("    FAIL-config: target 不存在")
+            continue
+        if tracked_and_dirty(d.target):
+            outcomes.append(Outcome(d, "SKIP", "target 含人工未提交修改"))
+            print("    SKIP: target 含人工未提交修改，避免交叠")
+            continue
+        if d.gate == "docstring" and DOCSTRING_GATE is None:
+            outcomes.append(Outcome(d, "SKIP", "docstring 门未配置（factory-local.json 缺 docstring_gate_cmd，缺省不启用）"))
+            print("    SKIP: docstring 门未配置（缺省不启用），缺陷无法验证")
+            continue
 
-    original: str | None = None
-    try:
-        original = apply_defect(target, d)
-        originals[target] = original
-        rc = run_gate(d.gate, d.target)
-        verdict, detail = judge(d, rc)
-        outcomes.append(Outcome(d, verdict, detail))
-        print(f"    {verdict}: {detail}")
-    except ValueError as exc:
-        outcomes.append(Outcome(d, "FAIL-config", str(exc)))
-        print(f"    FAIL-config: {exc}")
-    finally:
-        if original is not None:
-            target.write_text(original, encoding="utf-8")
+        original: str | None = None
+        try:
+            original = apply_defect(target, d)
+            originals[target] = original
+            rc = run_gate(d.gate, d.target)
+            verdict, detail = judge(d, rc)
+            outcomes.append(Outcome(d, verdict, detail))
+            print(f"    {verdict}: {detail}")
+        except ValueError as exc:
+            outcomes.append(Outcome(d, "FAIL-config", str(exc)))
+            print(f"    FAIL-config: {exc}")
+        finally:
+            if original is not None:
+                target.write_text(original, encoding="utf-8")
 
-
-def _check_restored(originals: dict[Path, str]) -> int | None:
-    """还原完整性校验：凡注入过的文件，当前字节必须与备份一致。"""
-    if residual := [str(target.relative_to(REPO_ROOT))
-                    for target, original in originals.items()
-                    if target.read_text(encoding="utf-8") != original]:
+    if residual := [
+        str(target.relative_to(REPO_ROOT))
+        for target, original in originals.items()
+        if target.read_text(encoding="utf-8") != original
+    ]:
         print(f"\nFATAL: 以下文件还原失败（请人工核对该文件是否已恢复原状）: {residual}",
               file=sys.stderr)
         return 3
-    return None
 
-
-def _summarize(outcomes: list[Outcome]) -> None:
-    """汇总（正向按门分组：篡改类 guard / 行为破坏类 tests，负例整体计）。"""
+    # 汇总（正向按门分组：篡改类 guard / 行为破坏类 tests，负例整体计）
     negative = [o for o in outcomes if not o.defect.expect_block]
     passed_neg = [o for o in negative if o.status == "PASS"]
 
@@ -392,9 +422,6 @@ def _summarize(outcomes: list[Outcome]) -> None:
     print(f"  正向缺陷拦截（kill rate）: {total_killed}/{total_positive} = {kill_rate:.0%}")
     print(f"  负例放行: {len(passed_neg)}/{len(negative)}")
 
-
-def _final_verdict(outcomes: list[Outcome]) -> int:
-    """结论与退出码：有 FAIL → 1；无 FAIL 有 SKIP → 4；全绿绑定周界指纹 → 0。"""
     skipped = [o for o in outcomes if o.status == "SKIP"]
     if any(o.status.startswith("FAIL") for o in outcomes):
         print("  结论: 门灵敏度未达标，禁止开启 auto-merge（铁律 5）")
@@ -407,25 +434,6 @@ def _final_verdict(outcomes: list[Outcome]) -> int:
     if blob := write_stamp():
         print(f"  周界指纹已绑定: {blob[:12]}（evidence-stamp.json）")
     return 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--only", help="逗号分隔的缺陷 id 过滤")
-    parser.add_argument("--defects", default=str(Path(__file__).parent / "defects.json"))
-    args = parser.parse_args()
-
-    defects = _load_and_filter(args.defects, args.only)
-    outcomes: list[Outcome] = []
-    originals: dict[Path, str] = {}
-    for d in defects:
-        _process_defect(d, outcomes, originals)
-
-    if (rc := _check_restored(originals)) is not None:
-        return rc
-
-    _summarize(outcomes)
-    return _final_verdict(outcomes)
 
 
 if __name__ == "__main__":
