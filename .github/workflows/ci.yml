@@ -78,8 +78,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: 换装 peer 下界/最新（--save=false 不触 lock）
-        run: pnpm add axios@${{ matrix.axios }} --save=false
+      - name: 换装 peer 下界/最新（runner 一次性环境，改动不外流）
+        run: pnpm add -D axios@${{ matrix.axios }}
       - name: axios 适配器测试
         run: pnpm exec vitest run tests/transport.spec.ts
       - run: pnpm build
