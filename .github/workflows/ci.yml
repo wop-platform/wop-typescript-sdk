@@ -19,14 +19,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run coverage
-      - run: npm run build
-      - run: npm run test:dist
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpmtypecheck
+      - run: pnpmcoverage
+      - run: pnpmbuild
+      - run: pnpmtest:dist
 
   types-floor:
     name: TS ${{ matrix.ts }} type consumer
@@ -37,11 +39,13 @@ jobs:
         ts: ['5.0.4', latest]
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm ci
-      - run: npm run build
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpmbuild
       - name: 编译类型消费方工程（dist d.ts 对 TS 下界/最新的语法兼容）
         run: npx -y -p typescript@${{ matrix.ts }} tsc -p tests/type-consumer
 
@@ -50,10 +54,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: 主仓源码 tsc --noEmit @ typescript@latest（devDeps 升级前预警）
         run: npx -y -p typescript@latest tsc --noEmit
 
@@ -66,15 +72,17 @@ jobs:
         axios: ['1.0.0', 'latest']
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm ci
-      - name: 换装 peer 下界/最新（--no-save 不触 lock）
-        run: npm i axios@${{ matrix.axios }} --no-save
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 换装 peer 下界/最新（--save=false 不触 lock）
+        run: pnpm add axios@${{ matrix.axios }} --save=false
       - name: axios 适配器测试
-        run: npx vitest run tests/transport.spec.ts
-      - run: npm run build
+        run: pnpm exec vitest run tests/transport.spec.ts
+      - run: pnpmbuild
       - name: dist 冒烟（AxiosTransport 经换装版本加载）
         run: node tests/smoke.cjs && node tests/smoke.mjs
 
