@@ -25,10 +25,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpmtypecheck
-      - run: pnpmcoverage
-      - run: pnpmbuild
-      - run: pnpmtest:dist
+      - run: pnpm typecheck
+      - run: pnpm coverage
+      - run: pnpm build
+      - run: pnpm test:dist
 
   types-floor:
     name: TS ${{ matrix.ts }} type consumer
@@ -45,7 +45,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpmbuild
+      - run: pnpm build
       - name: 编译类型消费方工程（dist d.ts 对 TS 下界/最新的语法兼容）
         run: npx -y -p typescript@${{ matrix.ts }} tsc -p tests/type-consumer
 
@@ -82,7 +82,7 @@ jobs:
         run: pnpm add axios@${{ matrix.axios }} --save=false
       - name: axios 适配器测试
         run: pnpm exec vitest run tests/transport.spec.ts
-      - run: pnpmbuild
+      - run: pnpm build
       - name: dist 冒烟（AxiosTransport 经换装版本加载）
         run: node tests/smoke.cjs && node tests/smoke.mjs
 
