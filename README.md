@@ -5,6 +5,8 @@
 [![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
 
 
+> **WOP · 万联易达开放平台** 官方 TypeScript SDK —— 协议与黄金向量真源：[wop-specs](https://github.com/wop-platform/wop-specs)
+
 WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密），
 使商户无需理解 canonicalRequest、套件推导与线上字节格式即可安全对接 WOP 网关。
 
@@ -111,6 +113,16 @@ SHA-256 摘要与 digest header 格式规则（D2 恰一空格 / 小写 hex / �
 | 系统 | `系统繁忙，请稍后重试` | 密钥缺失、运行时缺 WebCrypto |
 
 `WopError` 携带 `category` 字段（`parse` / `unsupported` / `integrity` / `signature` / `decrypt` / `consistency` / `system`）。
+
+## 🧩 WOP 生态导航 | Ecosystem
+
+| 类别 | 组件 |
+|------|------|
+| 协议与向量真源 | [wop-specs](https://github.com/wop-platform/wop-specs) —— crypto-strategy-spec · wop-sdk-spec · 黄金测试向量 |
+| 官方 SDK（六语言） | [Java](https://github.com/wop-platform/wop-java-sdk) · [Go](https://github.com/wop-platform/wop-go-sdk) · [Python](https://github.com/wop-platform/wop-python-sdk) · [PHP](https://github.com/wop-platform/wop-php-sdk) · [.NET](https://github.com/wop-platform/wop-dotnet-sdk) · [TypeScript](https://github.com/wop-platform/wop-typescript-sdk) |
+| 浏览器工作台 | [wop-web-tools](https://github.com/wop-platform/wop-web-tools) —— 密钥生成 · 报文联调 · 国密 · 六语言代码片段 |
+| Agent 技能包 | [wop-skills](https://github.com/wop-platform/wop-skills) —— 零代码调用 · 联调对拍 · 62 错误码排错 |
+| 平台服务（企业内部） | 统一接入网关 · 核心逻辑服务 · 回调服务 · 开发者门户 · 文档中心 |
 
 ## License
 
