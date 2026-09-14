@@ -12,10 +12,3 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@vitest/*"
         update-types: ["version-update:semver-major"]
-    groups:
-      # 通配保留默认分组合并行为（本配置文件存在时 GitHub 默认分组被
-      # 本文件替换，不写 groups 会使依赖更新退化为逐个单 PR）
-      npm_and_yarn:
-        applies-to: "version-updates"
-        patterns:
-          - "*"
