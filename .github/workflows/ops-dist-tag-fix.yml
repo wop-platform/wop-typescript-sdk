@@ -1,0 +1,23 @@
+# 一次性运维：归位被 rc 顶替的 latest dist-tag（v0.1.3-rc.2 实证
+# pnpm publish 无 --tag 时 prerelease 也打 latest）。跑完可删本文件。
+name: ops dist-tag fix
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+      - name: dist-tag 归位（latest→0.1.2，next→0.1.3-rc.2）
+        run: |
+          npm dist-tag add @wanlianyida/wop-typescript-sdk@0.1.2 latest
+          npm dist-tag add @wanlianyida/wop-typescript-sdk@0.1.3-rc.2 next
+          npm dist-tag ls @wanlianyida/wop-typescript-sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
