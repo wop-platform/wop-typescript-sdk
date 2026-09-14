@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # vitest 主版本升级须整组同升（vitest + @vitest/coverage-v8）并先裁决
+    # Node 版本支持策略：vitest 5 系要求 node ^22.20 || ^24.12 || >=25，
+    # 与本仓 engines >=20 冲突（PR #26/#30 实证），暂由人工规划。
+    ignore:
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # 通配保留默认分组合并行为（本配置文件存在时 GitHub 默认分组被
+      # 本文件替换，不写 groups 会使依赖更新退化为逐个单 PR）
+      npm_and_yarn:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
