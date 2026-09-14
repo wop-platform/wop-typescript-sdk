@@ -1,6 +1,6 @@
 # 贡献指南（CONTRIBUTING）
 
-感谢关注 WOP 商户 TypeScript SDK！本仓库是 WOP 商户侧**官方** SDK，实现协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密）+ 可插拔 HTTP 适配层（fetch 内置、axios peer 可选），对齐 [《WOP 商户 SDK 统一规格》v1.0-ratified](../gtsp-wop-gateway/docs/wop-sdk-spec.md)（网关仓 `gtsp-wop-gateway` 的 `docs/wop-sdk-spec.md`）。任何协议行为的改动都必须以该 spec 为准绳，本仓库不做 spec 之外的"自由发挥"。
+感谢关注 WOP 商户 TypeScript SDK！本仓库是 WOP 商户侧**官方** SDK，实现协议核心（结构化签名 / 报文摘要 / L2 数字信封 / 验签解密）+ 可插拔 HTTP 适配层（fetch 内置、axios peer 可选），对齐 [《WOP 商户 SDK 统一规格》v1.0-ratified](../wop-specs/docs/specs/wop-sdk-spec.md)（网关仓 `内部网关仓` 的 `docs/wop-sdk-spec.md`）。任何协议行为的改动都必须以该 spec 为准绳，本仓库不做 spec 之外的"自由发挥"。
 
 ## 开发环境
 
