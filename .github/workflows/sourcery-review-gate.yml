@@ -40,7 +40,7 @@ jobs:
             echo "fork PR：无 SOURCERY_TOKEN 可用，gate 跳过（外部贡献走维护者复核）。"
             exit 0
           fi
-          if [ "${{ github.actor }}" = "app/dependabot" ]; then
+          if [ "${{ github.actor }}" = "dependabot[bot]" ] || [ "${{ github.event.pull_request.user.login }}" = "dependabot[bot]" ]; then
             echo "dependabot PR：pull_request 事件不注入 secrets，gate 跳过（依赖 bump 走 CI 测试矩阵 + 人工复核）。"
             exit 0
           fi
