@@ -50,10 +50,12 @@
     "dist"
   ],
   "sideEffects": false,
+  "packageManager": "pnpm@10.28.1",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -97,5 +99,13 @@
   },
   "overrides": {
     "esbuild": "^0.28.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
