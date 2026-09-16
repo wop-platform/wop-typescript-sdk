@@ -42,6 +42,7 @@ describe('FetchTransport（原生 fetch 适配器）', () => {
     expect(init.method).toBe('POST');
     expect(init.headers).toEqual({ 'x-wop-appkey': 'ak' });
     expect(init.body).toBe('{"a":1}');
+    expect(init.redirect).toBe('manual');
     expect(resp.status).toBe(200);
     expect(resp.headers['x-wop-sign']).toBe('WOP-RSA3072-SHA256 v1/1/a/AAAA');
     expect(resp.body).toBe('{"ok":true}');
@@ -234,14 +235,14 @@ describe('响应体 11MiB 上限（与 dotnet MaxResponseBytes / Go maxResponseB
 });
 
 describe('WopClient.send（Transport 编排）', () => {
-  it('gatewayBaseUrl 未配置 → 系统类错误', async () => {
+  it('serverRoot 未配置 → configuration 错误', async () => {
     const client = new WopClient({
       appKey: 'ak',
       suite: 'WOP-RSA3072-SHA256',
       merchantPrivateKey: vectors.keys.rsa3072!.privatePkcs8B64,
       platformPublicKey: vectors.keys.rsa3072!.publicSpkiB64,
     });
-    await expect(client.send('POST', '/p', '{"a":1}')).rejects.toThrowError(/gatewayBaseUrl/);
+    await expect(client.send('POST', '/p', '{"a":1}')).rejects.toMatchObject({ category: 'configuration' });
   });
 
   it('默认 FetchTransport：全链路 send→verify（mock fetch 返回已签名响应）', async () => {

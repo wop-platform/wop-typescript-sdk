@@ -186,19 +186,16 @@ describe('buildRequest（F3/F4/F5/F9）', () => {
     expect(draft.headers).not.toHaveProperty('x-wop-content-digest');
   });
 
-  it('path 带 query string：拆分后分别入 canonical', async () => {
+  it('path 含 query string → configuration 拒绝（§7.7）', async () => {
     const client = makeClient();
-    const draft = await client.buildRequest('GET', '/list?status=PAID&page=2', undefined, {
-      timestamp: 1,
-      nonce: 'n',
+    await expect(client.buildRequest('GET', '/list?status=PAID&page=2')).rejects.toMatchObject({
+      category: 'configuration',
     });
-    expect(draft.path).toBe('/list');
-    expect(await verifyDraftCanonical(draft.headers, 'GET', '/list', 'status=PAID&page=2', fromBase64(MERCH_PUB))).toBe(true);
   });
 
-  it('path 不以 / 开头 → 解析类拒绝', async () => {
+  it('path 不以 / 开头 → configuration 拒绝', async () => {
     const client = makeClient();
-    await expect(client.buildRequest('POST', 'v1/x', BODY)).rejects.toThrowError(/路径/);
+    await expect(client.buildRequest('POST', 'v1/x', BODY)).rejects.toMatchObject({ category: 'configuration' });
   });
 
   it('L2：wireBody={"encrypted":…}、digest 对密文载体、encrypt 头入签', async () => {

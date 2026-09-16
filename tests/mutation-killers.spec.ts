@@ -294,10 +294,10 @@ describe('client.ts：出向/入向错误文案全等（I7 纪律下协议类消
     );
   });
 
-  it('gatewayBaseUrl 未配置 send → 文案全等 + category system', async () => {
+  it('serverRoot 未配置 send → 文案全等 + category configuration', async () => {
     await expect(makeClient().send('GET', '/p')).rejects.toMatchObject({
-      message: 'gatewayBaseUrl 未配置，无法发送（或直接消费 buildRequest 的 RequestDraft）',
-      category: 'system',
+      message: 'serverRoot 未配置，无法发送（或直接消费 buildRequest 的 RequestDraft）',
+      category: 'configuration',
     });
   });
 

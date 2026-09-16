@@ -1,4 +1,9 @@
+import { loadDefault } from './config/loader';
+import type { HttpClientSettings, WopSdkConfig } from './config/types';
+import { maskConfigForLog } from './config/types';
+import { joinUrl, validateApiPath } from './config/url';
 import { WopError, SIGNATURE_FAILED, DECRYPT_FAILED } from './error';
+import { WopGatewayResponseError } from './gatewayResponseError';
 import { parseSecurityReq } from './suite';
 import type { AlgorithmSuite } from './suite';
 import { canonicalRequest } from './canonical';
@@ -19,7 +24,7 @@ import type { Bytes } from './encode';
 import type { Transport } from './transport/types';
 import { FetchTransport } from './transport/fetch';
 
-/** 客户端配置:商户身份(appKey)、算法套件与密钥材料,可选网关基址 */
+/** 客户端配置：商户身份、算法套件、密钥材料与网关地址 */
 export interface WopConfig {
   appKey: string;
   /** securityReq，如 WOP-RSA3072-SHA256 */
@@ -28,7 +33,18 @@ export interface WopConfig {
   merchantPrivateKey: string;
   /** 平台公钥（X.509 SPKI，PEM 或 Base64 单行）——响应/回调验签 / 请求 DEK 包装 */
   platformPublicKey: string;
+  /** 主网关根地址（HTTPS 绝对 URL） */
+  serverRoot?: string;
+  /** 备用网关根地址（有序，仅全局） */
+  backupServerRoots?: readonly string[];
+  /** 出向签名有效窗口（秒） */
+  expiredSeconds?: number;
+  /** HTTP 客户端全局设置 */
+  httpClient?: HttpClientSettings;
+  /** @deprecated 使用 serverRoot */
   gatewayBaseUrl?: string;
+  /** 可选注入传输；缺省时走默认 fetch 适配器 */
+  transport?: Transport;
 }
 
 /** 请求级可选项:加密等级、签名窗口与测试注入点(生产留空走默认/CSPRNG) */
@@ -73,8 +89,11 @@ export interface SendResult extends VerifyResult {
   body: string;
 }
 
-/** 默认签名有效窗口(秒),RequestOptions.expiredSeconds 缺省值 */
-const DEFAULT_EXPIRED_SECONDS = 1800;
+/** 默认签名有效窗口（秒），RequestOptions.expiredSeconds 缺省值 */
+export const DEFAULT_EXPIRED_SECONDS = 1800;
+
+/** 模块级默认客户端缓存（K15/K26） */
+let defaultClientInstance: WopClient | null = null;
 /** L2 数字信封 x-wop-encrypt 头前缀(小写),识别该头必入签 */
 const ENCRYPT_HEADER_PREFIX = 'l2';
 
@@ -100,6 +119,28 @@ export class WopClient {
   private readonly platformPub: Bytes;
   private transport: Transport | null = null;
 
+  /** 惰性：loadDefault → 传输发现 → 构造；缓存复用 */
+  static defaultClient(): WopClient {
+    if (!defaultClientInstance) {
+      defaultClientInstance = WopClient.fromConfig(loadDefault());
+    }
+    return defaultClientInstance;
+  }
+
+  /** 显式配置构造（不进默认实例缓存） */
+  static fromConfig(config: WopSdkConfig | WopConfig): WopClient {
+    const client = new WopClient(config);
+    if (config.transport) {
+      client.setTransport(config.transport);
+    }
+    return client;
+  }
+
+  /** 丢弃默认实例与初始化状态（轮换须先 clearCache） */
+  static resetDefault(): void {
+    defaultClientInstance = null;
+  }
+
   constructor(config: WopConfig) {
     if (!config || typeof config !== 'object') {
       throw new WopError('WopConfig 不能为空', 'parse');
@@ -114,9 +155,43 @@ export class WopClient {
     if (!config.platformPublicKey || !config.platformPublicKey.trim()) {
       throw new WopError('platformPublicKey 不能为空（X.509 SPKI，PEM 或 Base64 单行）', 'parse');
     }
-    this.config = config;
+    const {
+      serverRoot: cfgRoot,
+      gatewayBaseUrl,
+      httpClient,
+      transport,
+      backupServerRoots,
+      expiredSeconds,
+      ...rest
+    } = config;
+    const resolvedRoot = cfgRoot ?? gatewayBaseUrl;
+    this.config = {
+      ...rest,
+      backupServerRoots: backupServerRoots ?? [],
+      expiredSeconds: expiredSeconds ?? DEFAULT_EXPIRED_SECONDS,
+      ...(resolvedRoot !== undefined ? { serverRoot: resolvedRoot, gatewayBaseUrl: resolvedRoot } : {}),
+      ...(httpClient !== undefined ? { httpClient } : {}),
+      ...(transport !== undefined ? { transport } : {}),
+    };
     this.merchantPriv = keyMaterialToDer(config.merchantPrivateKey);
     this.platformPub = keyMaterialToDer(config.platformPublicKey);
+  }
+
+  /** K16：日志/toString 私钥打码 */
+  toString(): string {
+    const root = this.resolvedServerRoot();
+    return maskConfigForLog({
+      appKey: this.config.appKey,
+      suite: this.config.suite,
+      serverRoot: root ?? '',
+      backupServerRoots: this.config.backupServerRoots ?? [],
+      expiredSeconds: this.config.expiredSeconds ?? DEFAULT_EXPIRED_SECONDS,
+      httpClient: this.config.httpClient ?? {
+        connectTimeout: 10_000,
+        readTimeout: 30_000,
+        maxRetryCount: 3,
+      },
+    });
   }
 
   /** 注入 HTTP 适配层；默认 fetch 原生适配器 */
@@ -135,12 +210,10 @@ export class WopClient {
     options: RequestOptions = {},
   ): Promise<RequestDraft> {
     const level = options.level ?? 'L0';
-    const expired = options.expiredSeconds ?? DEFAULT_EXPIRED_SECONDS;
+    const expired = options.expiredSeconds ?? this.config.expiredSeconds ?? DEFAULT_EXPIRED_SECONDS;
     const hasBody = body !== undefined && body !== '';
 
-    if (typeof path !== 'string' || !path.startsWith('/')) {
-      throw new WopError(`请求路径 "${path}" 须以 / 开头`, 'parse');
-    }
+    validateApiPath(path);
     if (level === 'L2' && !hasBody) {
       throw new WopError('L2 加密需要非空 body', 'parse');
     }
@@ -214,6 +287,33 @@ export class WopClient {
   }
 
   /**
+   * 一站式 execute：签名 → 发送 → 非 2xx 拦截 → 验签解密（§2）。
+   */
+  async execute(
+    method: string,
+    path: string,
+    body?: string,
+    options: RequestOptions = {},
+  ): Promise<VerifyResult> {
+    const serverRoot = this.resolvedServerRoot();
+    if (!serverRoot) {
+      throw new WopError('serverRoot 未配置，无法 execute', 'configuration');
+    }
+    const transport = this.ensureTransport();
+    const draft = await this.buildRequest(method, path, body, options);
+    const resp = await transport.send({
+      method: draft.method,
+      url: joinUrl(serverRoot, path),
+      headers: draft.headers,
+      body: draft.wireBody,
+    });
+    if (resp.status < 200 || resp.status >= 300) {
+      throw new WopGatewayResponseError(resp.status, resp.body);
+    }
+    return this.verifyResponse(resp.headers, resp.body, draft.path);
+  }
+
+  /**
    * 发送请求并校验响应（Transport 编排便利入口）。
    * 响应含 x-wop-sign 头时自动执行 F6 校验。
    */
@@ -223,15 +323,15 @@ export class WopClient {
     body?: string,
     options: RequestOptions = {},
   ): Promise<SendResult> {
-    if (!this.config.gatewayBaseUrl) {
-      throw new WopError('gatewayBaseUrl 未配置，无法发送（或直接消费 buildRequest 的 RequestDraft）', 'system');
+    const serverRoot = this.resolvedServerRoot();
+    if (!serverRoot) {
+      throw new WopError('serverRoot 未配置，无法发送（或直接消费 buildRequest 的 RequestDraft）', 'configuration');
     }
     const transport = this.ensureTransport();
     const draft = await this.buildRequest(method, path, body, options);
-    const base = this.config.gatewayBaseUrl.replace(/\/+$/, '');
     const resp = await transport.send({
       method: draft.method,
-      url: `${base}${path}`,
+      url: joinUrl(serverRoot, path),
       headers: draft.headers,
       body: draft.wireBody,
     });
@@ -240,6 +340,10 @@ export class WopClient {
       return { ...verified, status: resp.status, headers: resp.headers, body: resp.body };
     }
     return { ok: resp.status >= 200 && resp.status < 300, status: resp.status, headers: resp.headers, body: resp.body };
+  }
+
+  private resolvedServerRoot(): string | undefined {
+    return this.config.serverRoot ?? this.config.gatewayBaseUrl;
   }
 
   /** F6 固定顺序：验签 → digest 复核 → DEK 解包 → alg 族比对 → bulk 解密 */
