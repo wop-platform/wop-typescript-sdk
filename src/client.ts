@@ -17,6 +17,7 @@ import {
   aesGcmEncrypt,
   aesGcmDecrypt,
   randomBytes,
+  webcrypto,
 } from './crypto';
 import { buildDekPayload, parseDekPayload } from './envelope';
 import { toHex, toBase64Url, fromBase64Url, utf8Encode, utf8Decode } from './encode';
@@ -61,6 +62,13 @@ export interface RequestOptions {
   dek?: Uint8Array;
   /** 测试注入点：L2 IV（12B），生产留空 CSPRNG（I4：同 key 下永不复用） */
   iv?: Uint8Array;
+  /**
+   * 商户请求标识（wop-specs 附录 I：x-wop-request-id 透传头，恒不入签；须为不含个人数据的
+   * 不透明关联标识）。null/undefined/空白 → 缺省生成 UUID 去连字符（头恒存在）；
+   * 显式传值 → trim 后原值上行，除 trim 外禁止任何改写。构造即校验：
+   * 控制字符（trim 前原值扫描，CR/LF/NUL/DEL）与超长（trim 后 UTF-8 字节 > 128）均拒。
+   */
+  requestId?: string;
 }
 
 /** buildRequest 产物:可直接交任意 HTTP 栈发送的(method, path, headers, wireBody) */
@@ -97,8 +105,54 @@ let defaultClientInstance: WopClient | null = null;
 /** L2 数字信封 x-wop-encrypt 头前缀(小写),识别该头必入签 */
 const ENCRYPT_HEADER_PREFIX = 'l2';
 
-/** 签名 base64url 定长（字符）→ 解码字节定长（§3.3①：3072→384B，4096→512B） */
+/** 附录 I 透传头名（恒不入签；签名计算完成后写入） */
+const REQUEST_ID_HEADER = 'x-wop-request-id';
+
+/** 附录 I/I2 trim 集 = 附录 G2 TrimAll 空白类（空格、\t、\n、\x0B、\f、\r），不用 String.trim（Unicode 空白超集） */
+const TRIM_ALL_RE = /^[ \t\n\x0B\f\r]+|[ \t\n\x0B\f\r]+$/g;
+
+/**
+ * 缺省 requestId 生成（附录 I/I3）：UUID 去连字符（小写 32 hex，v4 语义）。
+ * 走 webcrypto（不消费 src/crypto 的 randomBytes——interop 确定性随机流不得被透传头污染）。
+ */
+async function generateDefaultRequestId(): Promise<string> {
+  const c = await webcrypto();
+  if (typeof c.randomUUID === 'function') {
+    return c.randomUUID().replace(/-/g, '');
+  }
+  const b = new Uint8Array(16);
+  c.getRandomValues(b);
+  b[6] = (b[6]! & 0x0f) | 0x40; // v4
+  b[8] = (b[8]! & 0x3f) | 0x80; // RFC 4122 variant
+  return toHex(b);
+}
+
+/**
+ * 附录 I/I2 requestId 校验（构造即拒，configuration 类）：
+ * 1. trim 前按**原值**逐码点扫描控制字符（< 0x20 或 == 0x7F，含 CR/LF/NUL/DEL）——防头注入；
+ * 2. trim（G2 TrimAll 同集）后为空 → 视为未设置（走缺省生成）；
+ * 3. trim 后 UTF-8 编码字节 > 128 → 拒（网关 header 缓冲按字节计）。
+ * 返回 trim 后上行值；null = 未设置（缺省生成）。
+ */
+function resolveRequestId(raw: string | undefined): string | null {  if (raw === undefined || raw === null) return null;
+  for (const ch of raw) {
+    const cp = ch.codePointAt(0)!;
+    if (cp < 0x20 || cp === 0x7f) {
+      throw new WopError(`requestId 含控制字符（防头注入）: ${cp}`, 'configuration');
+    }
+  }
+  const trimmed = raw.replace(TRIM_ALL_RE, '');
+  if (trimmed === '') return null;
+  const utf8Len = utf8Encode(trimmed).length;
+  if (utf8Len > 128) {
+    throw new WopError(`requestId UTF-8 字节长度不能超过 128（实际 ${utf8Len}）`, 'configuration');
+  }
+  return trimmed;
+}
+
+/** 签名 base64url 定长（字符）→ 解码字节定长（§3.3①：2048→256B，3072→384B，4096→512B） */
 const SIGNATURE_RAW_LENGTH: Record<AlgorithmSuite['signatureB64uLength'], number> = {
+  342: 256,
   512: 384,
   683: 512,
 };
@@ -118,6 +172,12 @@ export class WopClient {
   private readonly merchantPriv: Bytes;
   private readonly platformPub: Bytes;
   private transport: Transport | null = null;
+
+  /**
+   * 附录 I/I3：缺省 requestId 生成器（商户未传 requestId 时每次 buildRequest 调用）。
+   * 可整体替换（测试确定性锚，与 timestamp/nonce 注入同级）；生产保持缺省实现。
+   */
+  static requestIdGenerator: () => Promise<string> = generateDefaultRequestId;
 
   /** 惰性：loadDefault → 传输发现 → 构造；缓存复用 */
   static defaultClient(): WopClient {
@@ -214,6 +274,8 @@ export class WopClient {
     const hasBody = body !== undefined && body !== '';
 
     validateApiPath(path);
+    // 附录 I/I2：requestId 构造即校验（fail-fast，不延迟到发送前）
+    const resolvedRequestId = resolveRequestId(options.requestId);
     if (level === 'L2' && !hasBody) {
       throw new WopError('L2 加密需要非空 body', 'parse');
     }
@@ -259,6 +321,12 @@ export class WopClient {
     const signature = toBase64Url(await rsaSign(this.merchantPriv, utf8Encode(canonical)));
     const signedNames = Object.keys(headers).sort().join(';');
     headers['x-wop-sign'] = `${this.suite.securityReq} ${authString}/${signedNames}/${signature}`;
+
+    // 3. requestId 透传头（附录 I）：在签名落盘**之后**写入，保证不在 signedHeaders 冻结清单中；
+    //    商户未传（含 trim 后为空）→ 缺省生成，最终头恒存在
+    headers[REQUEST_ID_HEADER] = resolvedRequestId ?? (await WopClient.requestIdGenerator());
+    // 附录 I/I3 日志义务：INFO 级打印最终透传头值（非敏感，豁免脱敏），供网关 AccessLog 关联排查
+    console.info(`x-wop-request-id=${headers[REQUEST_ID_HEADER]} ${method.toUpperCase()} ${rawPath}`);
 
     return { method: method.toUpperCase(), path: rawPath, headers, wireBody };
   }

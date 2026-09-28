@@ -21,6 +21,7 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 
 | securityReq | 签名 | 报文加密（L2） | 密钥包装 | 摘要 |
 |---|---|---|---|---|
+| `WOP-RSA2048-SHA256` | SHA256withRSA | AES-256-GCM | RSA-2048-OAEP（双 SHA-256） | SHA-256 |
 | `WOP-RSA3072-SHA256` | SHA256withRSA | AES-256-GCM | RSA-3072-OAEP（双 SHA-256） | SHA-256 |
 | `WOP-RSA4096-SHA256` | SHA256withRSA | AES-256-GCM | RSA-4096-OAEP（双 SHA-256） | SHA-256 |
 | `WOP-SM2-SM3` | ❌ 暂未支持（见下方路线图） | | | |

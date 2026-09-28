@@ -148,8 +148,8 @@ describe('suite.ts：套件全字段映射与三段式守卫（F1，§3.2）', (
       '不支持的算法组合 "WOP-RSA3072-SM3"：国际/国密跨族组合禁止（I5）',
     );
     expectThrow(
-      () => parseSecurityReq('WOP-RSA2048-SHA256'),
-      '不支持的算法组合 "WOP-RSA2048-SHA256"：密钥算法或摘要算法不在支持列表',
+      () => parseSecurityReq('WOP-RSA2048-SM3'),
+      '不支持的算法组合 "WOP-RSA2048-SM3"：国际/国密跨族组合禁止（I5）',
     );
   });
 });
