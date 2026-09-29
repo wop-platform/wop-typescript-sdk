@@ -102,6 +102,23 @@ describe('配置 JSON 解析与校验', () => {
     const cfg = parseConfigJson('\uFEFF' + validConfigJson());
     expect(cfg.appKey).toBe('app_001');
   });
+
+  it('成员间缺逗号拒绝（Sourcery CR：畸形 JSON 不得静默接受）', () => {
+    expect(() => parseConfigJson('{"appKey":"a" "suite":"WOP-RSA3072-SHA256"}')).toThrowError(
+      /期望 ',' 或 '}'/,
+    );
+  });
+
+  it('尾随逗号拒绝', () => {
+    expect(() => parseConfigJson('{"appKey":"a",}')).toThrowError(/尾随逗号/);
+    // 合法单成员应通过解析阶段（缺其余必填项属后续语义校验）
+    expect(() => parseConfigJson('{"appKey":"a"}')).not.toThrowError(/尾随逗号/);
+  });
+
+  it('根对象后尾随内容拒绝', () => {
+    expect(() => parseConfigJson(validConfigJson() + 'garbage')).toThrowError(/根对象后存在多余内容/);
+    expect(() => parseConfigJson(validConfigJson() + '\n\n  ')).not.toThrow(); // 尾部空白合法
+  });
 });
 
 describe('ConfigLoader 缓存与发现', () => {
@@ -220,6 +237,13 @@ describe('path 语法与 URL 拼接（§7.7）', () => {
 
   it('拒绝 // 开头 path', () => {
     expect(() => validateApiPath('//attacker.example/path')).toThrowError(/不得 \/\/ 开头/);
+  });
+
+  it('非字符串 path 抛 WopError 而非原生 TypeError（Sourcery CR）', () => {
+    for (const bad of [null, undefined, 42, {}]) {
+      expect(() => validateApiPath(bad as unknown as string)).toThrowError(WopError);
+      expect(() => validateApiPath(bad as unknown as string)).not.toThrowError(TypeError);
+    }
   });
 });
 

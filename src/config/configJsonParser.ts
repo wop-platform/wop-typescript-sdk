@@ -39,39 +39,46 @@ class ConfigJsonParser {
     let expiredSeconds: number | null = null;
     let httpClient: HttpClientSettings | null = null;
     const seen = new Set<string>();
-    while (!this.tryConsume('}')) {
-      const key = this.readString();
-      this.requireDuplicateFree(seen, key);
-      this.expect(':');
-      switch (key) {
-        case 'appKey':
-          appKey = this.readString();
-          break;
-        case 'suite':
-          suite = this.readString();
-          break;
-        case 'merchantPrivateKey':
-          merchantPrivateKey = this.readString();
-          break;
-        case 'platformPublicKey':
-          platformPublicKey = this.readString();
-          break;
-        case 'serverRoot':
-          serverRoot = this.readString();
-          break;
-        case 'backupServerRoots':
-          backupServerRoots = this.readStringArray();
-          break;
-        case 'expiredSeconds':
-          expiredSeconds = this.readLong('expiredSeconds');
-          break;
-        case 'httpClient':
-          httpClient = this.readHttpClient();
-          break;
-        default:
-          this.skipValue();
-      }
-      this.optionalComma();
+    this.skipWhitespace();
+    if (!this.tryConsume('}')) {
+      do {
+        const key = this.readString();
+        this.requireDuplicateFree(seen, key);
+        this.expect(':');
+        switch (key) {
+          case 'appKey':
+            appKey = this.readString();
+            break;
+          case 'suite':
+            suite = this.readString();
+            break;
+          case 'merchantPrivateKey':
+            merchantPrivateKey = this.readString();
+            break;
+          case 'platformPublicKey':
+            platformPublicKey = this.readString();
+            break;
+          case 'serverRoot':
+            serverRoot = this.readString();
+            break;
+          case 'backupServerRoots':
+            backupServerRoots = this.readStringArray();
+            break;
+          case 'expiredSeconds':
+            expiredSeconds = this.readLong('expiredSeconds');
+            break;
+          case 'httpClient':
+            httpClient = this.readHttpClient();
+            break;
+          default:
+            this.skipValue();
+        }
+      } while (this.memberSeparator('}'));
+    }
+    // 根对象闭合后只允许空白（Sourcery CR：缺逗号/尾随垃圾不得静默接受）
+    this.skipWhitespace();
+    if (this.pos !== this.json.length) {
+      throw this.syntax('根对象后存在多余内容');
     }
     const raw: WopSdkConfig = {
       appKey: appKey ?? '',
@@ -92,24 +99,26 @@ class ConfigJsonParser {
     let read: number | null = null;
     let maxRetry: number | null = null;
     const seen = new Set<string>();
-    while (!this.tryConsume('}')) {
-      const key = this.readString();
-      this.requireDuplicateFree(seen, key);
-      this.expect(':');
-      switch (key) {
-        case 'connectTimeout':
-          connect = this.readInt('connectTimeout');
-          break;
-        case 'readTimeout':
-          read = this.readInt('readTimeout');
-          break;
-        case 'maxRetryCount':
-          maxRetry = this.readInt('maxRetryCount');
-          break;
-        default:
-          this.skipValue();
-      }
-      this.optionalComma();
+    this.skipWhitespace();
+    if (!this.tryConsume('}')) {
+      do {
+        const key = this.readString();
+        this.requireDuplicateFree(seen, key);
+        this.expect(':');
+        switch (key) {
+          case 'connectTimeout':
+            connect = this.readInt('connectTimeout');
+            break;
+          case 'readTimeout':
+            read = this.readInt('readTimeout');
+            break;
+          case 'maxRetryCount':
+            maxRetry = this.readInt('maxRetryCount');
+            break;
+          default:
+            this.skipValue();
+        }
+      } while (this.memberSeparator('}'));
     }
     const defaults = defaultHttpClientSettings();
     return {
@@ -122,9 +131,11 @@ class ConfigJsonParser {
   private readStringArray(): string[] {
     this.expect('[');
     const values: string[] = [];
-    while (!this.tryConsume(']')) {
-      values.push(this.readString());
-      this.optionalComma();
+    this.skipWhitespace();
+    if (!this.tryConsume(']')) {
+      do {
+        values.push(this.readString());
+      } while (this.memberSeparator(']'));
     }
     return values;
   }
@@ -262,19 +273,23 @@ class ConfigJsonParser {
 
   private skipObject(): void {
     this.expect('{');
-    while (!this.tryConsume('}')) {
-      this.readString();
-      this.expect(':');
-      this.skipValue();
-      this.optionalComma();
+    this.skipWhitespace();
+    if (!this.tryConsume('}')) {
+      do {
+        this.readString();
+        this.expect(':');
+        this.skipValue();
+      } while (this.memberSeparator('}'));
     }
   }
 
   private skipArray(): void {
     this.expect('[');
-    while (!this.tryConsume(']')) {
-      this.skipValue();
-      this.optionalComma();
+    this.skipWhitespace();
+    if (!this.tryConsume(']')) {
+      do {
+        this.skipValue();
+      } while (this.memberSeparator(']'));
     }
   }
 
@@ -305,11 +320,25 @@ class ConfigJsonParser {
     return false;
   }
 
-  private optionalComma(): void {
+  /**
+   * 成员分隔符严格判定（RFC 8259）：成员之间必须有逗号，且逗号后不得紧跟闭合符
+   * （拒绝尾随逗号）。返回 true = 还有下一个成员；false = 容器闭合（已消费闭合符）。
+   */
+  private memberSeparator(closing: string): boolean {
     this.skipWhitespace();
     if (this.pos < this.json.length && this.json[this.pos] === ',') {
       this.pos++;
+      this.skipWhitespace();
+      if (this.pos < this.json.length && this.json[this.pos] === closing) {
+        throw this.syntax(`尾随逗号（'${closing}' 前不得有逗号）`);
+      }
+      return true;
     }
+    if (this.pos < this.json.length && this.json[this.pos] === closing) {
+      this.pos++;
+      return false;
+    }
+    throw this.syntax(`期望 ',' 或 '${closing}'`);
   }
 
   private skipWhitespace(): void {

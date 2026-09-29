@@ -34,7 +34,9 @@ export function validateGatewayUrl(value: string | null | undefined, fieldName: 
 
 /** §7.7 API path 语法校验 */
 export function validateApiPath(path: string): void {
-  if (!path) {
+  // JS 调用方可能传入 null/undefined 等非字符串（Sourcery CR）：先做运行时类型防护，
+  // 抛 SDK 定义的 WopError 而非原生 TypeError
+  if (typeof path !== 'string' || !path) {
     throw new WopError('请求路径为空', 'configuration');
   }
   if (!path.startsWith('/')) {
