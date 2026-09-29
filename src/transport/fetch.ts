@@ -13,7 +13,11 @@ export const MAX_RESPONSE_BYTES = 11 << 20;
 export class FetchTransport implements Transport {
   /** 发送请求并结构化返回;发送失败抛 system,越限语义见类注释 */
   async send(request: TransportRequest): Promise<TransportResponse> {
-    const init: RequestInit = { method: request.method, headers: request.headers };
+    const init: RequestInit = {
+      method: request.method,
+      headers: request.headers,
+      redirect: 'manual', // §7.4.1：不跟随重定向，避免改写已签名语义
+    };
     if (request.body !== '') {
       init.body = request.body;
     }
