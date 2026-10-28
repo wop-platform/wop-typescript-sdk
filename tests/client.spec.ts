@@ -272,6 +272,13 @@ describe('verifyResponse / verifyCallback（F6 顺序 + I7 模糊化）', () => 
     expect(result.plaintext).toBe(body);
   });
 
+  it('入向不消费子商户头：额外携带未入签的 x-wop-sub-mch-id 仍通过（附录 J/J3）', async () => {
+    const client = makeClient();
+    const { headers, body } = await platformRespond(PATH, BODY);
+    headers['x-wop-sub-mch-id'] = 'PLF-SUB-001'; // 签名完成后追加，未入 signedHeaders
+    expect((await client.verifyResponse(headers, body, PATH)).ok).toBe(true);
+  });
+
   it('headers 大小写不敏感', async () => {
     const client = makeClient();
     const { headers, body } = await platformRespond(PATH, BODY);

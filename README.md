@@ -100,12 +100,14 @@ const draft = await client.buildRequest('POST', '/v1/order/create', body, {
 });
 ```
 
-SDK 自动写入 `x-wop-sub-mch-id` 并纳入 `x-wop-sign` 的 signedHeaders。值先做首尾空白 trim；
-仅接受可打印 ASCII（0x20–0x7E）、不得含内部空格、trim 后长度 ≤128，违规在构造期抛
-`configuration`。不传 = 应用自身身份：头缺席，行为与旧版逐字节一致（AC-20）。
+SDK 自动写入 `x-wop-sub-mch-id` 并纳入 `x-wop-sign` 的 signedHeaders。**仅首尾空格可 trim；
+任何控制字符即便在首尾也直接拒**；仅接受可打印 ASCII（0x20–0x7E）、不得含内部空格、
+trim 后长度 ≤128，违规在构造期抛 `configuration`。不传 = 应用自身身份：头缺席，行为与
+旧版逐字节一致（AC-20）。
 
-该头仅在网关子商户灰度放行且应用为 ISV 应用（`app_type=20`）时生效。使用 CORS 精确
-allowlist 的浏览器侧部署须在 `Access-Control-Allow-Headers` 中追加 `x-wop-sub-mch-id`。
+该头仅对 ISV 应用（`app_type=20`）生效；**前置**：网关须已部署 D-13（条件入签），未部署时
+该头按未知头透传、请求以应用自身身份执行，子商户身份会静默丢失。使用 CORS 精确 allowlist
+的浏览器侧部署须在 `Access-Control-Allow-Headers` 中追加 `x-wop-sub-mch-id`。
 
 ## 破坏性变更
 
