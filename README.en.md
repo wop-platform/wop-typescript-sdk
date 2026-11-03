@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@wanlianyida%2Fwop-typescript-sdk)](https://www.npmjs.com/package/@wanlianyida/wop-typescript-sdk) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-typescript-sdk)](https://github.com/wop-platform/wop-typescript-sdk/releases)
 [![CI](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/github/license/wop-platform/wop-typescript-sdk)](LICENSE)
-[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
+[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-99.9%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
 
 
 Official merchant-side TypeScript SDK for the WOP gateway: encapsulates the protocol core
@@ -13,7 +13,7 @@ or wire byte formats.
 - **Zero runtime dependencies**: all cryptography via WebCrypto (`globalThis.crypto`, Node ≥20 / browser secure context)
 - **Protocol core + pluggable transport**: built-in native `fetch` adapter; `axios` shipped as a peer adapter behind a separate entry point
 - **CI-verified compatibility matrix**: Node 20–24 × axios 1.0–latest × TypeScript **5.0–7.0** (type-consumer floor 5.0, forward-probing to the latest major), published artifacts checked across ESM/CJS × node10/node16/bundler resolutions + API snapshot gate
-- **100% line / branch / function / statement coverage**, byte-level anchored to golden test vectors
+- **Line 99.87% / branch 99.07% / function 100% / statement 99.86% coverage** (98% gate), byte-level anchored to golden test vectors
 
 ## Supported algorithm suites
 
@@ -117,9 +117,9 @@ Run the conformance suite (byte-level RSA assertions + SM "must-reject" negative
 ```bash
 git clone https://github.com/wop-platform/wop-typescript-sdk
 cd wop-typescript-sdk
-npm install
-npm test          # full suite (includes vector conformance)
-npm run coverage  # coverage report (line+branch ≥98% gate, currently 100%)
+pnpm install
+pnpm test          # full suite (includes vector conformance)
+pnpm coverage      # coverage report (line+branch ≥98% gate; currently line 99.87% / branch 99.07%)
 ```
 
 Vector coverage: RSA2048/3072/4096 signatures, OAEP wrap/unwrap (including the MGF1-SHA-1 trap negative vector),
