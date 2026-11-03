@@ -36,7 +36,7 @@ pnpm api:snapshot # 重新生成 etc/*.api.md 快照（API 变更后必须运行
 pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 ```
 
-**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `index.ts` 纯转发文件）。CI 中 `pnpm coverage` 任一维度低于 98% 即失败，实际值以该命令输出为准——新分支是稀释覆盖率的最常见原因，提交前请自查。
+**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `src/**/index.ts` 纯转发文件与 `src/**/types.ts` 纯类型声明）。CI 中 `pnpm coverage` 任一维度低于 98% 即失败，实际值以该命令输出为准——新分支是稀释覆盖率的最常见原因，提交前请自查。
 
 ## 黄金向量纪律（最重要）
 
@@ -63,7 +63,7 @@ pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 - WebCrypto 异步 API（`crypto.subtle`）——协议入口全部 `async`，不引入同步阻塞或 Node 专有 `crypto` 模块（保持浏览器兼容）。
 - 密钥材料按 D12 约定接受 PKCS#8 / X.509 SPKI DER 的 Base64（PEM 自动剥离）；错误信息面向集成者可自查。
 - 新源码进 `src/`，测试进 `tests/*.spec.ts`；`src/index.ts` / `src/transport/axios.ts` 之外的文件不得新增运行时导出面，导出统一收敛到入口。
-- 覆盖率统计排除 `index.ts` 转发，但**不排除任何逻辑代码**——不要用 `/* v8 ignore */` 逃逸门禁。
+- 覆盖率统计排除 `index.ts` 转发与 `types.ts` 纯类型声明，但**不排除任何逻辑代码**——不要用 `/* v8 ignore */` 逃逸门禁。
 
 **spec 功能面对齐**（改动相关模块时先重读对应条款）：
 
