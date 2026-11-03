@@ -6,7 +6,7 @@
 
 | 项 | 要求 |
 |---|---|
-| Node.js | ≥ 20（CI 矩阵验证 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
+| Node.js | **库运行时 ≥ 20**（`package.json` `engines.node`）。**开发/测试工具链另有更严约束**：vitest 4 支持 `^20 / ^22 / ≥24`（奇数版本 21、23 不支持），`@microsoft/api-extractor` ≥ 20.9，`@cucumber/cucumber` 13 仅 `22 / 24 / ≥26` —— 因此本地跑全套（含 `pnpm test:bdd`）请用 **Node 22 或 24**，Node 20 上 `test:bdd` 会直接失败（CI 的 Node 20 腿亦跳过 bdd） |
 | 操作系统 | Linux / macOS / Windows（CI `test` job 三 OS × 三 Node 全矩阵；测试脚本已跨平台化：无 POSIX-only shell 语法、路径经 `node:path`/`fileURLToPath`、子进程以 `process.execPath` 直跑 JS 入口） |
 | TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证）；`typecheck-latest` job 以 typescript@latest 跑主仓 typecheck，作 devDeps 升级前的**前瞻雷达**（当前 latest = 7.0，主仓已验证兼容） |
 | 测试 | vitest ^4.1 + `@vitest/coverage-v8` |
