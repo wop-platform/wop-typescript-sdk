@@ -11,7 +11,7 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 使商户无需理解 canonicalRequest、套件推导与线上字节格式即可安全对接 WOP 网关。
 
 - 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
-- 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
+- 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 由 `tests/fetch-pinned.mjs` 按 ref+sha256 拉取、不落库，禁手改）
 - **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥20 / 浏览器安全上下文）
 - **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
 - **兼容性矩阵 CI 验证**：Node 20–24 × **Linux / macOS / Windows** × axios 1.0–latest × TypeScript **5.0–7.0**（类型消费下界 5.0，前瞻至最新大版本），发布物 ESM/CJS × node10/node16/bundler 四解析模式 + API 快照门禁
@@ -121,7 +121,7 @@ allowlist 的浏览器侧部署须在 `Access-Control-Allow-Headers` 中追加 `
 
 ## 向量自测（conformance）
 
-本仓 `tests/fixtures/crypto-vectors.json` 为协议黄金向量全量副本（只读，禁止手改）。
+本仓 `tests/fixtures/crypto-vectors.json` 由 `tests/fetch-pinned.mjs` 按钉版（ref+sha256）从真源拉取，不落库、禁止手改。
 克隆仓库后运行 conformance 套件（RSA 段字节级断言 + SM 段"必须拒"负测试）：
 
 ```bash

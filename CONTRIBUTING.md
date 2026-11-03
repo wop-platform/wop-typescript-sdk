@@ -40,10 +40,15 @@ pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 
 ## 黄金向量纪律（最重要）
 
-`tests/fixtures/crypto-vectors.json` 是协议黄金向量的全量只读副本，是**唯一正确性锚**：
+`tests/fixtures/crypto-vectors.json` 与 `tests/fixtures/interop-cases.json` 是协议黄金向量的**唯一正确性锚**。两文件**不落库**（gitignore），由 `tests/fetch-pinned.mjs` 在测试/构建前按 `ref + sha256` 从真源 [wop-platform/wop-specs](https://github.com/wop-platform/wop-specs) 拉取并字节级校验：
 
-- **禁止手改、禁止裁剪、禁止按实现"就地修正"向量**。任何"向量与实现不一致"都默认实现错，先对照 spec 与网关真源排查。
-- 新增协议行为必须：① 同步网关侧真源（向量由网关生成）；② 本仓更新为全量副本；③ 补全消费测试（`tests/vectors.spec.ts` 字节级断言）。
+- **禁止手改、禁止裁剪、禁止按实现"就地修正"向量副本**。任何"向量与实现不一致"都默认实现错，先对照 spec 与网关真源排查。本地副本被篡改时 fetch-pinned 会自动重拉覆盖，无须手工修复。
+- **向量升级 = 改钉版，不是改副本**，流程（与 `tests/fetch-pinned.mjs` 头注释一致）：
+  1. 先在 [wop-specs](https://github.com/wop-platform/wop-specs) 提 PR 合入新向量（真源先行）；
+  2. 更新 `tests/fetch-pinned.mjs` 的 `WOP_SPECS_REF` 与 `WOP_SPECS_SHA256` 两条 sha256；
+  3. `pnpm coverage`（或任一触发 fetch-pinned 的命令）验证拉取与哈希校验通过；
+  4. 以「钉版 diff」形式提交本仓 PR——reviewer 以 `WOP_SPECS_REF` 与 sha256 的变更作为向量变更清单，复核向量来源与负向量覆盖。
+- 新增协议行为必须：① 同步网关侧真源（向量由网关生成，走上方钉版升级流程）；② 补全消费测试（`tests/vectors.spec.ts` 字节级断言）。
 - **负向量必须拒**：篡改（tamper）、跨族（如 RSA 套件喂 SM 密钥/向量）、错格式（digest 多空格、大写 hex、base64url 带填充、MGF1-SHA-1 陷阱等）都要有"必须拒绝"的断言，且失败类别符合 I7 模糊化要求（见下）。
 - SM2-SM3 段向量在 TS 仓体现为"暂未支持必须抛错"的负测试（Q7 裁决：首版仅 RSA 套件）。
 
@@ -87,7 +92,7 @@ pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 feat(envelope): L2 信封支持 4096 套件 IV 重放保护
 
 body 用中文说明动机与 spec 条款依据（如 F5/F9），
-涉及向量变更必须注明"已同步网关真源全量副本"。
+涉及向量变更必须注明"已同步网关真源"（即钉版升级流程的第 1、2 步）。
 ```
 
 ## PR 流程

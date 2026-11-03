@@ -111,7 +111,7 @@ under the app's own identity — do not enable it early. Browser deployments wit
 
 ## Vector self-test (conformance)
 
-`tests/fixtures/crypto-vectors.json` in this repo is a full read-only copy of the protocol golden vectors.
+`tests/fixtures/crypto-vectors.json` is fetched by `tests/fetch-pinned.mjs` from the upstream source at a pinned ref (verified by sha256), never committed, and must not be hand-edited.
 Run the conformance suite (byte-level RSA assertions + SM "must-reject" negative tests):
 
 ```bash
