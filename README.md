@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@wanlianyida%2Fwop-typescript-sdk)](https://www.npmjs.com/package/@wanlianyida/wop-typescript-sdk) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-typescript-sdk)](https://github.com/wop-platform/wop-typescript-sdk/releases)
 [![CI](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wop-platform/wop-typescript-sdk/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/github/license/wop-platform/wop-typescript-sdk)](LICENSE)
-[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-99.9%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
+[![Node 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/) [![Coverage](https://img.shields.io/badge/coverage-%E2%89%A598%25-brightgreen)](https://github.com/wop-platform/wop-typescript-sdk) [![Gherkin](https://img.shields.io/badge/bdd-15%20scenarios-orange)](tests/features/merchant-journey.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-typescript-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform-foss&utm_content=badge)
 
 
 > **WOP · 万联易达开放平台** 官方 TypeScript SDK —— 协议与黄金向量真源：[wop-specs](https://github.com/wop-platform/wop-specs)
@@ -15,7 +15,7 @@ WOP 商户侧官方 TypeScript SDK：封装协议核心（结构化签名 / 报�
 - **零运行时依赖**：全部密码学走 WebCrypto（`globalThis.crypto`，Node ≥20 / 浏览器安全上下文）
 - **协议核心 + 可插拔传输**：`fetch` 原生适配器内置，`axios` 以 peer 适配器独立入口交付
 - **兼容性矩阵 CI 验证**：Node 20–24 × **Linux / macOS / Windows** × axios 1.0–latest × TypeScript **5.0–7.0**（类型消费下界 5.0，前瞻至最新大版本），发布物 ESM/CJS × node10/node16/bundler 四解析模式 + API 快照门禁
-- **行 99.87% / 分支 99.07% / 函数 100% / 语句 99.86% 覆盖率**（门禁 98%），黄金测试向量字节级锚定
+- **覆盖率门禁：行 / 分支 / 函数 / 语句均 ≥98%**（`pnpm coverage`，实际值以该命令输出为准），黄金测试向量字节级锚定
 
 ## 支持的算法套件
 
@@ -129,7 +129,7 @@ git clone https://github.com/wop-platform/wop-typescript-sdk
 cd wop-typescript-sdk
 pnpm install
 pnpm test          # 全量测试（含向量 conformance）
-pnpm coverage      # 覆盖率报告（行+分支 ≥98% 门禁；当前行 99.87% / 分支 99.07%）
+pnpm coverage      # 覆盖率报告（行+分支 ≥98% 门禁，实际值见命令输出）
 ```
 
 向量覆盖：RSA3072/4096 签名、OAEP 包装/解包（含 MGF1-SHA-1 陷阱负向量）、AES-256-GCM 定 IV、
