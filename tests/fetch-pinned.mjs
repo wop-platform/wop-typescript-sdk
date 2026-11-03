@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,19 +16,25 @@ const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
 export default async function fetchPinnedSpecs() {
   await mkdir(fixturesDir, { recursive: true }); // 副本出库后目录可能不存在
-  for (const [src, expected] of Object.entries(WOP_SPECS_SHA256)) {
-    const url = `https://raw.githubusercontent.com/wop-platform/wop-specs/${WOP_SPECS_REF}/${src}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`wop-specs ${src} 拉取失败：HTTP ${res.status}`);
-    }
-    const data = Buffer.from(await res.arrayBuffer());
-    const digest = createHash('sha256').update(data).digest('hex');
-    if (digest !== expected) {
-      throw new Error(`wop-specs ${src} sha256 mismatch：期望 ${expected}，实得 ${digest}；向量升级须先合 wop-specs PR 再同步钉版`);
-    }
-    await writeFile(join(fixturesDir, basename(src)), data);
-  }
+  await Promise.all(
+    Object.entries(WOP_SPECS_SHA256).map(async ([src, expected]) => {
+      const target = join(fixturesDir, basename(src));
+      const local = await readFile(target).catch(() => null);
+      // 本地副本哈希已对：离线命中，省一次外网往返，CI 也不再因 raw.githubusercontent 抖动变红
+      if (local && createHash('sha256').update(local).digest('hex') === expected) return;
+      const url = `https://raw.githubusercontent.com/wop-platform/wop-specs/${WOP_SPECS_REF}/${src}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`wop-specs ${src} 拉取失败：HTTP ${res.status}`);
+      }
+      const data = Buffer.from(await res.arrayBuffer());
+      const digest = createHash('sha256').update(data).digest('hex');
+      if (digest !== expected) {
+        throw new Error(`wop-specs ${src} sha256 mismatch：期望 ${expected}，实得 ${digest}；向量升级须先合 wop-specs PR 再同步钉版`);
+      }
+      await writeFile(target, data);
+    }),
+  );
 }
 
 // CLI 直跑判定：windows 下 argv[1] 是本地路径，与 fileURLToPath 结果同构比较

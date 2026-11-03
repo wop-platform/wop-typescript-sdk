@@ -19,7 +19,7 @@
 ```bash
 git clone https://github.com/wop-platform/wop-typescript-sdk
 cd wop-typescript-sdk
-npm install
+pnpm install
 ```
 
 ## 构建与测试
@@ -27,16 +27,16 @@ npm install
 命令与 [.github/workflows/ci.yml](.github/workflows/ci.yml) 完全一致，提交前请在本地全部跑绿：
 
 ```bash
-npm ci              # 干净安装（CI 同款）
-npm run typecheck   # tsc --noEmit，全仓类型检查
-npm run coverage    # vitest run --coverage，全量测试 + 覆盖率门禁
-npm run build       # tsup 产物构建（dist/ ESM+CJS+dts，index 与 axios 双入口）
-npm run test:dist   # 产物门禁：publint + attw 四解析模式 + API 快照严格校验 + dist 双格式冒烟（须先 build）
-npm run api:snapshot # 重新生成 etc/*.api.md 快照（API 变更后必须运行并提交快照 diff）
-npm test            # 仅跑测试（vitest run，不出覆盖率）
+pnpm install --frozen-lockfile  # 干净安装（CI 同款；preinstall 守卫会拒绝 npm/yarn）
+pnpm typecheck   # tsc --noEmit，全仓类型检查
+pnpm coverage    # vitest run --coverage，全量测试 + 覆盖率门禁
+pnpm build       # tsup 产物构建（dist/ ESM+CJS+dts，index 与 axios 双入口）
+pnpm test:dist   # 产物门禁：publint + attw 四解析模式 + API 快照严格校验 + dist 双格式冒烟（须先 build）
+pnpm api:snapshot # 重新生成 etc/*.api.md 快照（API 变更后必须运行并提交快照 diff）
+pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 ```
 
-**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `index.ts` 纯转发文件）。CI 中 `npm run coverage` 任一维度低于 98% 即失败。当前仓库处于 **100%**，新增代码请保持不回退——新分支是稀释覆盖率的最常见原因，提交前请自查。
+**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `index.ts` 纯转发文件）。CI 中 `pnpm coverage` 任一维度低于 98% 即失败。当前实测：行 99.87% / 分支 99.07% / 函数 100% / 语句 99.86%，余量仅约 1 个百分点——新分支是稀释覆盖率的最常见原因，提交前请自查。
 
 ## 黄金向量纪律（最重要）
 
@@ -51,7 +51,7 @@ npm test            # 仅跑测试（vitest run，不出覆盖率）
 
 `etc/wop-typescript-sdk.api.md` 与 `etc/wop-typescript-sdk-axios.api.md` 是 api-extractor 生成的公共 API 报告：
 
-- `npm run test:dist` 内含快照**严格校验**：API 变更后未同步快照即失败。更新快照用 `npm run api:snapshot`，快照 diff 必须出现在同一 PR 中——reviewer 以快照 diff 作为 API 变更清单。
+- `pnpm test:dist` 内含快照**严格校验**：API 变更后未同步快照即失败。更新快照用 `pnpm api:snapshot`，快照 diff 必须出现在同一 PR 中——reviewer 以快照 diff 作为 API 变更清单。
 - `tests/type-consumer/index.ts` 是消费方哨兵：`noUnusedLocals` 强制覆盖全部导出符号，新增导出请同步登记，移除/改形既有导出会在此立即编译失败。
 - breaking change（0.x 阶段 = 主版本位不变下的导出面收缩/改形）必须在 PR 描述中显式声明，并评估商户升级成本。
 
@@ -93,7 +93,7 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 ## PR 流程
 
 1. 基于 `main` 分支拉特性分支，PR 目标为 `main`。
-2. CI 必须全绿：`npm ci` → `npm run typecheck` → `npm run coverage`（≥98% 门禁）→ `npm run build` → `npm run test:dist`；Node 20/22/24 × Linux/macOS/Windows 三矩阵 + `types-floor`（TS 5.0.4/latest）+ `axios-matrix`（axios 1.0.0/latest）。
+2. CI 必须全绿：`pnpm install --frozen-lockfile` → `pnpm typecheck` → `pnpm coverage`（≥98% 门禁）→ `pnpm build` → `pnpm test:dist`；Node 20/22/24 × Linux/macOS/Windows 三矩阵 + `types-floor`（TS 5.0.4/latest）+ `axios-matrix`（axios 1.0.0/latest）。矩阵内 `test:dist` 拆为两步：`test:pack`（publint/attw/api-extractor，产物布局与平台无关，仅 ubuntu 跑一次）+ `test:smoke`（dist 双格式冒烟，全平台）。
 3. **向量合规全绿**：触碰 `tests/fixtures/crypto-vectors.json` 或协议路径的 PR，reviewer 必须复核向量来源（网关真源）与负向量覆盖。
 4. 至少一名 reviewer 通过后合并；spec 条款与实现冲突时**上报裁决**，不得以"既有实现"为由顺延 spec。
 
@@ -103,7 +103,7 @@ body 用中文说明动机与 spec 条款依据（如 F5/F9），
 
 1. 版本号变更（`package.json` 的 `version`）经 PR 合入 `main`，提交信息如 `chore(release): v<version>`（占位符替换为实际版本，如 `v0.1.2`）。
 2. 打 tag 并推送：`git tag v<version> && git push origin v<version>`（tag 须与 `package.json` 版本一致，否则发布标识错位）。
-3. release workflow 自动执行：checkout → Node 22 → `npm ci` → `npm run typecheck` → `npm run coverage` → `npm run build` → `npm publish --access public`（scoped 包必须 public）。
+3. release workflow 自动执行：checkout → Node 22 → `pnpm install --frozen-lockfile` → `pnpm typecheck` → `pnpm coverage` → `pnpm build` → `npm publish --access public`（scoped 包必须 public）。
 4. npm 凭证走 GitHub Secret `NODE_AUTH_TOKEN`（`registry.npmjs.org`），**任何凭证不得出现在仓库明文**；发布步骤位于全部测试与构建之后，失败不会留下半发布状态。
 
 发布后验证：`npm view @wanlianyida/wop-typescript-sdk@<version>` 确认版本与 `dist` 产物完整。

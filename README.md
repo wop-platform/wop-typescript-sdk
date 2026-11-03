@@ -127,9 +127,9 @@ allowlist 的浏览器侧部署须在 `Access-Control-Allow-Headers` 中追加 `
 ```bash
 git clone https://github.com/wop-platform/wop-typescript-sdk
 cd wop-typescript-sdk
-npm install
-npm test          # 全量测试（含向量 conformance）
-npm run coverage  # 覆盖率报告（行+分支 ≥98% 门禁，当前 100%）
+pnpm install
+pnpm test          # 全量测试（含向量 conformance）
+pnpm coverage      # 覆盖率报告（行+分支 ≥98% 门禁；当前行 99.87% / 分支 99.07%）
 ```
 
 向量覆盖：RSA3072/4096 签名、OAEP 包装/解包（含 MGF1-SHA-1 陷阱负向量）、AES-256-GCM 定 IV、
