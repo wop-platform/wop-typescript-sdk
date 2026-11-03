@@ -30,7 +30,9 @@ jobs:
       - run: pnpm test:bdd
         if: matrix.node-version != '20'  # cucumber@13 engines 要求 Node ≥22
       - run: pnpm build
-      - run: pnpm test:dist
+      - run: pnpm test:pack
+        if: matrix.os == 'ubuntu-latest'  # 产物布局检查（publint/attw/api-extractor）与平台无关，单腿跑
+      - run: pnpm test:smoke
 
   types-floor:
     name: TS ${{ matrix.ts }} type consumer

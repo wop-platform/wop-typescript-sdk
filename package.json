@@ -55,11 +55,13 @@
     "node": ">=20"
   },
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
+    "preinstall": "node -e \"var u=process.env.npm_config_user_agent||'';if(u.startsWith('pnpm/')===false){console.error('Use pnpm install for installation in this project. If you do not have pnpm, install it via npm i -g pnpm.');process.exit(1)}\"",
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:dist": "node tests/fetch-pinned.mjs && publint && attw --pack . && api-extractor run && api-extractor run -c api-extractor.axios.json && node tests/smoke.cjs && node tests/smoke.mjs",
+    "test:dist": "pnpm test:pack && pnpm test:smoke",
+    "test:pack": "publint && attw --pack . && api-extractor run && api-extractor run -c api-extractor.axios.json",
+    "test:smoke": "node tests/fetch-pinned.mjs && node tests/smoke.cjs && node tests/smoke.mjs",
     "api:snapshot": "api-extractor run --local && api-extractor run --local -c api-extractor.axios.json",
     "coverage": "vitest run --coverage",
     "typecheck": "node tests/fetch-pinned.mjs && tsc --noEmit",
