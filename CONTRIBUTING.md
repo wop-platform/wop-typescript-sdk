@@ -9,7 +9,7 @@
 | Node.js | ≥ 20（CI 矩阵验证 20 / 22 / 24，与 `package.json` `engines.node` 一致） |
 | 操作系统 | Linux / macOS / Windows（CI `test` job 三 OS × 三 Node 全矩阵；测试脚本已跨平台化：无 POSIX-only shell 语法、路径经 `node:path`/`fileURLToPath`、子进程以 `process.execPath` 直跑 JS 入口） |
 | TypeScript | ^5.9（`tsc --noEmit` 类型检查）；**消费方类型下界 TS 5.0**（CI `types-floor` job 以 5.0.4 + 最新双跑 `tests/type-consumer` 验证）；`typecheck-latest` job 以 typescript@latest 跑主仓 typecheck，作 devDeps 升级前的**前瞻雷达**（当前 latest = 7.0，主仓已验证兼容） |
-| 测试 | vitest ^3.2 + `@vitest/coverage-v8` |
+| 测试 | vitest ^4.1 + `@vitest/coverage-v8` |
 | peer 下界 | axios ≥1.0.0（CI `axios-matrix` job 以 1.0.0 + latest 换装验证 transport 测试与 dist 冒烟） |
 | 构建 | tsup ^8.5（ESM/CJS 双格式 + dts，target es2022） |
 | 密码学 | 全部走 WebCrypto（`globalThis.crypto`），**零运行时依赖**，不得引入 polyfill 或第三方 crypto 库 |
@@ -36,7 +36,7 @@ pnpm api:snapshot # 重新生成 etc/*.api.md 快照（API 变更后必须运行
 pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 ```
 
-**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `index.ts` 纯转发文件）。CI 中 `pnpm coverage` 任一维度低于 98% 即失败。当前实测：行 99.87% / 分支 99.07% / 函数 100% / 语句 99.86%，余量仅约 1 个百分点——新分支是稀释覆盖率的最常见原因，提交前请自查。
+**覆盖率门禁**：`vitest.config.ts` 设定行 / 分支 / 函数 / 语句四项阈值均为 **98%**（统计范围 `src/**`，排除 `src/**/index.ts` 纯转发文件与 `src/**/types.ts` 纯类型声明）。CI 中 `pnpm coverage` 任一维度低于 98% 即失败，实际值以该命令输出为准——新分支是稀释覆盖率的最常见原因，提交前请自查。
 
 ## 黄金向量纪律（最重要）
 
@@ -63,7 +63,7 @@ pnpm test        # 仅跑测试（vitest run，不出覆盖率）
 - WebCrypto 异步 API（`crypto.subtle`）——协议入口全部 `async`，不引入同步阻塞或 Node 专有 `crypto` 模块（保持浏览器兼容）。
 - 密钥材料按 D12 约定接受 PKCS#8 / X.509 SPKI DER 的 Base64（PEM 自动剥离）；错误信息面向集成者可自查。
 - 新源码进 `src/`，测试进 `tests/*.spec.ts`；`src/index.ts` / `src/transport/axios.ts` 之外的文件不得新增运行时导出面，导出统一收敛到入口。
-- 覆盖率统计排除 `index.ts` 转发，但**不排除任何逻辑代码**——不要用 `/* v8 ignore */` 逃逸门禁。
+- 覆盖率统计排除 `index.ts` 转发与 `types.ts` 纯类型声明，但**不排除任何逻辑代码**——不要用 `/* v8 ignore */` 逃逸门禁。
 
 **spec 功能面对齐**（改动相关模块时先重读对应条款）：
 
